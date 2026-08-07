@@ -33,8 +33,7 @@ with claude skills/commands taken from another project. I had a 10 minute back a
 conversation with Claude to create a plan for the build and then set it working. While Claude built
 the initial design, I generated photos for the hero and set up the Vercel project.
 
-Once the first build was done, I did a lot of UI cleanup, added a few small tasks (using TinyURL for
-example) and had a good hour or two of testing and bug fixes. Finished by tightening up the UI and theme, making sure the CI pipeline was working, and verifying everything shipped cleanly to Vercel.
+Once the first build was done, I did a lot of UI cleanup, added a few small tasks and had a good hour or two of testing and bug fixes. Finished by tightening up the UI and theme, making sure the CI pipeline was working, and verifying everything shipped cleanly to Vercel.
 
 ## Assumptions/design decisions
 
