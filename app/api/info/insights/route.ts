@@ -46,6 +46,9 @@ export async function GET(request: Request): Promise<NextResponse> {
     const payload = await buildInsights(coords.data, label?.success ? label.data : undefined)
     return NextResponse.json(payload)
   } catch {
-    return NextResponse.json({ error: 'Could not build insights for that location.' }, { status: 502 })
+    return NextResponse.json(
+      { error: 'Could not build insights for that location.' },
+      { status: 502 },
+    )
   }
 }

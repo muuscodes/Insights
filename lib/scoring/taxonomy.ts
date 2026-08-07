@@ -94,8 +94,16 @@ const RULES: ReadonlyArray<{ tag: string; values: readonly string[]; category: C
     values: ['bar', 'pub', 'biergarten', 'nightclub', 'cinema', 'theatre', 'arts_centre', 'casino'],
     category: 'entertainment',
   },
-  { tag: 'tourism', values: ['museum', 'gallery', 'artwork', 'zoo', 'aquarium'], category: 'entertainment' },
-  { tag: 'leisure', values: ['fitness_centre', 'sports_centre', 'bowling_alley'], category: 'entertainment' },
+  {
+    tag: 'tourism',
+    values: ['museum', 'gallery', 'artwork', 'zoo', 'aquarium'],
+    category: 'entertainment',
+  },
+  {
+    tag: 'leisure',
+    values: ['fitness_centre', 'sports_centre', 'bowling_alley'],
+    category: 'entertainment',
+  },
   {
     tag: 'amenity',
     values: ['school', 'kindergarten', 'college', 'university', 'library', 'childcare'],
@@ -123,7 +131,11 @@ const RULES: ReadonlyArray<{ tag: string; values: readonly string[]; category: C
   { tag: 'leisure', values: ['pitch'], category: 'entertainment' },
   { tag: 'amenity', values: ['bus_station', 'ferry_terminal'], category: 'transit' },
   { tag: 'highway', values: ['bus_stop'], category: 'transit' },
-  { tag: 'railway', values: ['station', 'halt', 'tram_stop', 'subway_entrance'], category: 'transit' },
+  {
+    tag: 'railway',
+    values: ['station', 'halt', 'tram_stop', 'subway_entrance'],
+    category: 'transit',
+  },
   {
     tag: 'amenity',
     values: ['bank', 'post_office', 'fuel', 'car_wash', 'townhall', 'police', 'fire_station'],
@@ -131,7 +143,16 @@ const RULES: ReadonlyArray<{ tag: string; values: readonly string[]; category: C
   },
   {
     tag: 'shop',
-    values: ['hairdresser', 'laundry', 'dry_cleaning', 'beauty', 'optician', 'car_repair', 'copyshop', 'travel_agency'],
+    values: [
+      'hairdresser',
+      'laundry',
+      'dry_cleaning',
+      'beauty',
+      'optician',
+      'car_repair',
+      'copyshop',
+      'travel_agency',
+    ],
     category: 'services',
   },
   // Anything else tagged shop= is general retail. Keep this last so the more
@@ -224,7 +245,9 @@ export const NEAR_QUERY_FILTERS: readonly OsmFilter[] = [
  * 1-mile query anyway.
  */
 export const WIDE_FILTERS: Record<CategoryKey, OsmFilter[]> = {
-  grocery: [{ tag: 'shop', values: ['supermarket', 'wholesale', 'greengrocer', 'butcher', 'farm'] }],
+  grocery: [
+    { tag: 'shop', values: ['supermarket', 'wholesale', 'greengrocer', 'butcher', 'farm'] },
+  ],
   retail: [
     {
       tag: 'shop',

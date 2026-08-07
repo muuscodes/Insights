@@ -70,9 +70,7 @@ async function commonNameFor(key: number): Promise<string | null> {
     if (tally.size === 0) return null
 
     // Ties break toward the shorter name, which is reliably the plain one.
-    return [...tally.entries()].sort(
-      (a, b) => b[1] - a[1] || a[0].length - b[0].length,
-    )[0]![0]
+    return [...tally.entries()].sort((a, b) => b[1] - a[1] || a[0].length - b[0].length)[0]![0]
   } catch {
     return null
   }

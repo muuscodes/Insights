@@ -56,7 +56,10 @@ function buildLines(properties: NonNullable<PhotonFeature['properties']>): {
   if (!primary) return null
 
   const locality = city ?? district ?? county ?? null
-  const secondary = [locality, state, postcode].filter(Boolean).join(', ').replace(/, (\d{5})$/, ' $1')
+  const secondary = [locality, state, postcode]
+    .filter(Boolean)
+    .join(', ')
+    .replace(/, (\d{5})$/, ' $1')
 
   return { primary, secondary }
 }
@@ -129,7 +132,10 @@ export async function reverseLabel(center: LatLng): Promise<string | null> {
   const url = `${BASE}/reverse?lat=${center.lat}&lon=${center.lng}&lang=en`
 
   try {
-    const data = await fetchJson<PhotonResponse>(url, { revalidate: CACHE_SECONDS, timeoutMs: 6000 })
+    const data = await fetchJson<PhotonResponse>(url, {
+      revalidate: CACHE_SECONDS,
+      timeoutMs: 6000,
+    })
     const properties = data.features?.[0]?.properties
     if (!properties) return null
 

@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# A newer push to the same branch makes the in-flight run pointless.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Lint, types, format, tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      # Frozen so a lockfile that drifted from package.json fails loudly here
+      # rather than resolving to something different than anyone ran locally.
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      # Each step runs even if an earlier one failed, so one push surfaces every
+      # problem instead of one per re-run.
+      - name: Format
+        if: '!cancelled()'
+        run: pnpm format:check
+
+      - name: Lint
+        if: '!cancelled()'
+        run: pnpm lint
+
+      - name: Typecheck
+        if: '!cancelled()'
+        run: pnpm typecheck
+
+      - name: Tests
+        if: '!cancelled()'
+        run: pnpm test
+
+      # Catches anything only a real production build surfaces. No API key is
+      # provided on purpose: the app has to build and boot without one.
+      - name: Build
+        if: '!cancelled()'
+        run: pnpm build

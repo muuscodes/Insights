@@ -36,11 +36,11 @@ export function FieldSection({
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
         <h2 className="flex items-center gap-3.5">
           <span
-            className={`grid h-12 w-12 shrink-0 place-items-center rounded-2xl border-[3px] border-ink text-ink ${ACCENT[accent]}`}
+            className={`border-ink text-ink grid h-12 w-12 shrink-0 place-items-center rounded-2xl border-[3px] ${ACCENT[accent]}`}
           >
             <Icon size={22} strokeWidth={2.75} aria-hidden />
           </span>
-          <span className="text-3xl text-ink sm:text-[2rem]">{title}</span>
+          <span className="text-ink text-3xl sm:text-[2rem]">{title}</span>
         </h2>
 
         {note ? <span className="tag bg-card text-ink">{note}</span> : null}
@@ -58,8 +58,8 @@ export function FieldSection({
 export function Unavailable({ reason }: { reason: string }) {
   return (
     <div className="slab bg-cream-deep px-6 py-7">
-      <p className="font-display text-xl font-extrabold text-ink">This part did not load</p>
-      <p className="mt-1.5 leading-relaxed text-ink-soft">{reason}</p>
+      <p className="font-display text-ink text-xl font-extrabold">This part did not load</p>
+      <p className="text-ink-soft mt-1.5 leading-relaxed">{reason}</p>
     </div>
   )
 }

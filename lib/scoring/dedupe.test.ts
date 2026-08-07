@@ -8,12 +8,7 @@ import type { CategoryKey } from './taxonomy'
 const M = 1 / 111_320
 
 let seq = 0
-function at(
-  category: CategoryKey,
-  name: string | null,
-  offsetM: number,
-  distanceM = offsetM,
-): Poi {
+function at(category: CategoryKey, name: string | null, offsetM: number, distanceM = offsetM): Poi {
   seq += 1
   return {
     id: `way/${seq}`,
@@ -127,7 +122,10 @@ describe('dedupePois', () => {
   })
 
   it('treats names differing only by case and spacing as the same', () => {
-    const kept = dedupePois([at('park', 'Logan  Circle', 0, 100), at('park', 'logan circle', 20, 120)])
+    const kept = dedupePois([
+      at('park', 'Logan  Circle', 0, 100),
+      at('park', 'logan circle', 20, 120),
+    ])
     expect(kept).toHaveLength(1)
   })
 })

@@ -20,12 +20,12 @@ export function InsightsSkeleton() {
           <span
             key={index}
             aria-hidden
-            className="ring absolute h-40 w-40 rounded-full border-[3px] border-ink"
+            className="border-ink absolute h-40 w-40 rounded-full border-[3px] ring"
             style={{ animationDelay: `${index * 0.63}s` }}
           />
         ))}
 
-        <span aria-hidden className="absolute bottom-6 h-2.5 w-14 rounded-pill bg-ink squash" />
+        <span aria-hidden className="rounded-pill bg-ink squash absolute bottom-6 h-2.5 w-14" />
 
         <span aria-hidden className="pin-bounce relative">
           <svg width="60" height="60" viewBox="0 0 24 24" aria-hidden>
@@ -41,8 +41,8 @@ export function InsightsSkeleton() {
         </span>
       </div>
 
-      <h1 className="mt-6 text-center text-4xl text-ink">Scouting the block</h1>
-      <p className="mt-2 max-w-md text-center leading-relaxed text-ink-soft">
+      <h1 className="text-ink mt-6 text-center text-4xl">Scouting the block</h1>
+      <p className="text-ink-soft mt-2 max-w-md text-center leading-relaxed">
         Counting every mapped place within a mile, then casting wider for anything the first pass
         came up short on. The first look at an address takes a few seconds. After that it is
         instant.
@@ -52,7 +52,7 @@ export function InsightsSkeleton() {
         {STEPS.map((step, index) => (
           <li
             key={step.label}
-            className={`blink rounded-pill border-[3px] border-ink px-4 py-1.5 font-display text-sm font-extrabold text-ink ${step.color}`}
+            className={`blink rounded-pill border-ink font-display text-ink border-[3px] px-4 py-1.5 text-sm font-extrabold ${step.color}`}
             style={{ animationDelay: `${index * 0.28}s` }}
           >
             {step.label}

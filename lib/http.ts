@@ -129,7 +129,5 @@ export async function firstSuccessful<T>(
     }
   }
 
-  throw lastError instanceof Error
-    ? lastError
-    : new UpstreamError('All upstream candidates failed')
+  throw lastError instanceof Error ? lastError : new UpstreamError('All upstream candidates failed')
 }

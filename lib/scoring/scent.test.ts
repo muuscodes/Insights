@@ -36,8 +36,12 @@ describe('computeScentProfile', () => {
     // Counts taken from a live 1-mile Overpass probe: 296 restaurants,
     // 106 cafes, 66 bars, 27 bakeries, 28 parks, 8 florists.
     const features = [
-      ...Array.from({ length: 296 }, () => feature({ amenity: 'restaurant', cuisine: 'mexican' }, 300)),
-      ...Array.from({ length: 106 }, () => feature({ amenity: 'cafe', cuisine: 'coffee_shop' }, 300)),
+      ...Array.from({ length: 296 }, () =>
+        feature({ amenity: 'restaurant', cuisine: 'mexican' }, 300),
+      ),
+      ...Array.from({ length: 106 }, () =>
+        feature({ amenity: 'cafe', cuisine: 'coffee_shop' }, 300),
+      ),
       ...Array.from({ length: 66 }, () => feature({ amenity: 'bar' }, 300)),
       ...Array.from({ length: 27 }, () => feature({ shop: 'bakery' }, 300)),
       ...Array.from({ length: 28 }, () => feature({ leisure: 'park' }, 300)),

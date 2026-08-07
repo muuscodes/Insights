@@ -77,10 +77,10 @@ export async function GET(request: Request): Promise<NextResponse> {
   }
 
   try {
-    const short = await fetchText(
-      `${TINYURL_ENDPOINT}?url=${encodeURIComponent(longUrl)}`,
-      { revalidate: CACHE_SECONDS, timeoutMs: 6000 },
-    )
+    const short = await fetchText(`${TINYURL_ENDPOINT}?url=${encodeURIComponent(longUrl)}`, {
+      revalidate: CACHE_SECONDS,
+      timeoutMs: 6000,
+    })
 
     if (!short.startsWith('https://tinyurl.com/')) {
       return NextResponse.json({ url: longUrl, shortened: false })

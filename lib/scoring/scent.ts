@@ -141,8 +141,7 @@ const CUISINE_LABELS: Record<string, string> = {
   bakery: 'baked goods',
 }
 
-const prettyCuisine = (raw: string): string =>
-  CUISINE_LABELS[raw] ?? raw.replace(/_/g, ' ')
+const prettyCuisine = (raw: string): string => CUISINE_LABELS[raw] ?? raw.replace(/_/g, ' ')
 
 function joinWithAnd(items: string[]): string {
   if (items.length === 0) return ''
@@ -154,7 +153,8 @@ function summarize(notes: ScentNote[]): string {
   const [first, second, third] = notes
   if (!first) return 'Quiet air. Nothing much within a block.'
 
-  const defFor = (n: ScentNote): string => NOTES.find((d) => d.key === n.key)?.inline ?? n.label.toLowerCase()
+  const defFor = (n: ScentNote): string =>
+    NOTES.find((d) => d.key === n.key)?.inline ?? n.label.toLowerCase()
 
   if (!second) return `Mostly ${defFor(first)}.`
 

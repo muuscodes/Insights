@@ -52,7 +52,7 @@ export function ShareLink() {
         type="button"
         onClick={share}
         disabled={state === 'working'}
-        className={`slab-press inline-flex items-center gap-2 rounded-pill border-[3px] border-ink px-5 py-2.5 font-display font-extrabold text-ink shadow-[0_5px_0_var(--color-ink)] disabled:opacity-80 ${
+        className={`slab-press rounded-pill border-ink font-display text-ink inline-flex items-center gap-2 border-[3px] px-5 py-2.5 font-extrabold shadow-[0_5px_0_var(--color-ink)] disabled:opacity-80 ${
           state === 'copied' ? 'bg-lime' : 'bg-sun'
         }`}
       >
@@ -67,7 +67,7 @@ export function ShareLink() {
       </button>
 
       {shortUrl && state === 'copied' ? (
-        <span className="text-xs text-ink-faint">{shortUrl}</span>
+        <span className="text-ink-faint text-xs">{shortUrl}</span>
       ) : null}
     </div>
   )

@@ -179,10 +179,10 @@ export function InsightsMap({
 
   return (
     <div>
-      <div className="relative overflow-hidden rounded-3xl border-[3px] border-ink bg-cream-deep shadow-[0_6px_0_var(--color-ink)]">
+      <div className="border-ink bg-cream-deep relative overflow-hidden rounded-3xl border-[3px] shadow-[0_6px_0_var(--color-ink)]">
         <div ref={containerRef} className="h-[26rem] w-full sm:h-[32rem]" />
         {failed ? (
-          <p className="absolute inset-0 flex items-center justify-center bg-cream-deep px-6 text-center text-ink-soft">
+          <p className="bg-cream-deep text-ink-soft absolute inset-0 flex items-center justify-center px-6 text-center">
             The map could not load. Every score on this page is unaffected.
           </p>
         ) : null}
@@ -193,7 +193,7 @@ export function InsightsMap({
           <li key={category.key} className="tag bg-card text-ink">
             <span
               aria-hidden
-              className="inline-block h-3 w-3 rounded-full border-2 border-ink"
+              className="border-ink inline-block h-3 w-3 rounded-full border-2"
               style={{ backgroundColor: category.color }}
             />
             {category.label}

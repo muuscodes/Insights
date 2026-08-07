@@ -60,7 +60,10 @@ function panelFailed(error: unknown, fallback: string, panel: string): Panel<nev
   return { ok: false, reason: fallback }
 }
 
-export async function buildInsights(center: LatLng, providedLabel?: string): Promise<InsightsPayload> {
+export async function buildInsights(
+  center: LatLng,
+  providedLabel?: string,
+): Promise<InsightsPayload> {
   const poisPromise = fetchPois(center)
   const birdsPromise = fetchBirds(center)
   const tractPromise = lookupTract(center)
@@ -153,9 +156,7 @@ export async function buildInsights(center: LatLng, providedLabel?: string): Pro
 
   /* Map ------------------------------------------------------------------- */
 
-  const sortedByDistance = (pois?.nearPois ?? [])
-    .slice()
-    .sort((a, b) => a.distanceM - b.distanceM)
+  const sortedByDistance = (pois?.nearPois ?? []).slice().sort((a, b) => a.distanceM - b.distanceM)
 
   const mapPois: MapPoi[] = sampleForMap(sortedByDistance, MAX_MAP_POIS).map(
     ({ id, name, lat, lng, distanceM, category }) => ({
@@ -165,7 +166,8 @@ export async function buildInsights(center: LatLng, providedLabel?: string): Pro
       lng,
       distanceM,
       category,
-    }))
+    }),
+  )
 
   return {
     address: {

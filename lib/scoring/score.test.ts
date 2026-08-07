@@ -106,9 +106,7 @@ describe('scoreMode', () => {
       { highway: 'bus_stop' },
       { amenity: 'bar' },
     ]
-    const everything = oneOfEach.flatMap((tags) =>
-      Array.from({ length: 10 }, () => poi(tags, 10)),
-    )
+    const everything = oneOfEach.flatMap((tags) => Array.from({ length: 10 }, () => poi(tags, 10)))
 
     const result = scoreMode(everything, 'walk')
     expect(result.score).toBe(100)

@@ -15,7 +15,9 @@ function mockFetch(impl: (url: string, init: RequestInit) => Promise<Response>) 
 describe('fetchJson', () => {
   it('parses a JSON body', async () => {
     mockFetch(async () => new Response('{"ok":true}', { status: 200 }))
-    await expect(fetchJson('https://example.test', { revalidate: 60 })).resolves.toEqual({ ok: true })
+    await expect(fetchJson('https://example.test', { revalidate: 60 })).resolves.toEqual({
+      ok: true,
+    })
   })
 
   it('parses a top-level JSON array, which the Census Data API returns', async () => {

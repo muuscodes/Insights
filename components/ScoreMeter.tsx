@@ -30,7 +30,7 @@ export function ScoreMeter({
   return (
     <div className="slab px-6 py-6">
       <div className="flex items-center justify-between gap-3">
-        <span className="flex items-center gap-2 font-display text-xl font-extrabold text-ink">
+        <span className="font-display text-ink flex items-center gap-2 text-xl font-extrabold">
           <Icon size={20} strokeWidth={2.75} aria-hidden />
           {kind}
         </span>
@@ -40,20 +40,20 @@ export function ScoreMeter({
       {/* The score as a pressable-looking block, not a thin bar. */}
       <div className="mt-5 flex items-stretch gap-4">
         <div
-          className={`pop grid min-w-[7rem] place-items-center rounded-2xl border-[3px] border-ink px-5 py-4 ${tone.block}`}
+          className={`pop border-ink grid min-w-[7rem] place-items-center rounded-2xl border-[3px] px-5 py-4 ${tone.block}`}
         >
-          <span className="numeral text-[4.25rem] text-ink">{result.score}</span>
+          <span className="numeral text-ink text-[4.25rem]">{result.score}</span>
         </div>
 
         <div className="flex flex-col justify-center">
-          <p className="font-display text-2xl font-extrabold leading-tight text-ink">
+          <p className="font-display text-ink text-2xl leading-tight font-extrabold">
             {result.label}
           </p>
-          <p className="mt-0.5 text-sm text-ink-soft">out of 100</p>
+          <p className="text-ink-soft mt-0.5 text-sm">out of 100</p>
         </div>
       </div>
 
-      <div className="mt-5 h-4 w-full overflow-hidden rounded-pill border-[3px] border-ink bg-cream-deep">
+      <div className="rounded-pill border-ink bg-cream-deep mt-5 h-4 w-full overflow-hidden border-[3px]">
         <div
           className={`fill h-full ${tone.bar}`}
           style={{ width: `${Math.max(result.score, 3)}%` }}
@@ -70,20 +70,20 @@ export function ScoreMeter({
           {top.map((row) => (
             <div
               key={row.key}
-              className="flex items-center justify-between gap-3 rounded-xl border-[2.5px] border-ink bg-cream px-3 py-2"
+              className="border-ink bg-cream flex items-center justify-between gap-3 rounded-xl border-[2.5px] px-3 py-2"
             >
               <dt className="flex min-w-0 items-center gap-2.5">
                 <span
                   aria-hidden
-                  className="inline-block h-3.5 w-3.5 shrink-0 rounded-full border-2 border-ink"
+                  className="border-ink inline-block h-3.5 w-3.5 shrink-0 rounded-full border-2"
                   style={{ backgroundColor: row.color }}
                 />
-                <span className="truncate text-[0.95rem] text-ink">{row.label}</span>
-                <span className="shrink-0 font-display text-sm font-extrabold text-ink-faint">
+                <span className="text-ink truncate text-[0.95rem]">{row.label}</span>
+                <span className="font-display text-ink-faint shrink-0 text-sm font-extrabold">
                   {row.count}
                 </span>
               </dt>
-              <dd className="shrink-0 font-display text-sm font-bold text-ink-soft">
+              <dd className="font-display text-ink-soft shrink-0 text-sm font-bold">
                 {row.nearestM === null
                   ? 'none'
                   : showWalkTimes
@@ -94,7 +94,7 @@ export function ScoreMeter({
           ))}
         </dl>
       ) : (
-        <p className="mt-6 leading-relaxed text-ink-soft">
+        <p className="text-ink-soft mt-6 leading-relaxed">
           Nothing to score inside this radius. That is itself the finding.
         </p>
       )}

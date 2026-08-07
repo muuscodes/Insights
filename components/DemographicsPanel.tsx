@@ -28,7 +28,9 @@ export function DemographicsPanel({ demographics }: { demographics: Demographics
     {
       label: 'Median home value',
       value:
-        demographics.medianHomeValue === null ? null : currency.format(demographics.medianHomeValue),
+        demographics.medianHomeValue === null
+          ? null
+          : currency.format(demographics.medianHomeValue),
     },
     {
       label: "Bachelor's or higher",
@@ -50,25 +52,27 @@ export function DemographicsPanel({ demographics }: { demographics: Demographics
         {rows.map((row) => (
           <div
             key={row.label}
-            className="flex items-center justify-between gap-4 rounded-xl border-[2.5px] border-ink bg-cream px-4 py-2.5"
+            className="border-ink bg-cream flex items-center justify-between gap-4 rounded-xl border-[2.5px] px-4 py-2.5"
           >
             <dt className="text-ink">{row.label}</dt>
-            <dd className="shrink-0 font-display text-2xl font-extrabold text-ink">
-              {row.value ?? <span className="text-base font-bold text-ink-faint">not reported</span>}
+            <dd className="font-display text-ink shrink-0 text-2xl font-extrabold">
+              {row.value ?? (
+                <span className="text-ink-faint text-base font-bold">not reported</span>
+              )}
             </dd>
           </div>
         ))}
       </dl>
 
       {demographics.specialUse ? (
-        <p className="mt-4 rounded-2xl border-[3px] border-ink bg-sun px-4 py-3 leading-relaxed text-ink">
+        <p className="border-ink bg-sun text-ink mt-4 rounded-2xl border-[3px] px-4 py-3 leading-relaxed">
           Heads up: this address falls in a Census special land-use tract, the kind used for parks,
           airports and large federal sites. Almost nobody is counted as living here, so these
           numbers describe the land rather than the neighborhood around it.
         </p>
       ) : null}
 
-      <p className="mt-5 leading-relaxed text-ink-soft">
+      <p className="text-ink-soft mt-5 leading-relaxed">
         American Community Survey {demographics.vintage} 5-year estimates, for the census tract this
         address sits in. Survey based, so these are estimates with margins of error rather than a
         headcount. Anything the Census suppresses shows as not reported.

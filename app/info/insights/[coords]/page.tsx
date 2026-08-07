@@ -2,7 +2,15 @@ import { Suspense, cache } from 'react'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
-import { ArrowLeft, Bird as BirdIcon, Building2, Map as MapIcon, Route, Users, Wind } from 'lucide-react'
+import {
+  ArrowLeft,
+  Bird as BirdIcon,
+  Building2,
+  Map as MapIcon,
+  Route,
+  Users,
+  Wind,
+} from 'lucide-react'
 
 import { BirdPanel } from '@/components/BirdPanel'
 import { DemographicsPanel } from '@/components/DemographicsPanel'
@@ -105,11 +113,11 @@ async function InsightsReport({ center, label }: { center: LatLng; label?: strin
   const { address } = insights
 
   return (
-    <main className="mx-auto w-full max-w-6xl px-6 pb-24 pt-10 sm:px-10">
+    <main className="mx-auto w-full max-w-6xl px-6 pt-10 pb-24 sm:px-10">
       <header className="pop">
         <Link
           href="/info"
-          className="inline-flex items-center gap-1.5 rounded-pill border-[3px] border-ink bg-card px-4 py-1.5 font-display font-extrabold text-ink shadow-[0_4px_0_var(--color-ink)] slab-press"
+          className="rounded-pill border-ink bg-card font-display text-ink slab-press inline-flex items-center gap-1.5 border-[3px] px-4 py-1.5 font-extrabold shadow-[0_4px_0_var(--color-ink)]"
         >
           <ArrowLeft size={16} strokeWidth={3} aria-hidden />
           New search
@@ -117,7 +125,7 @@ async function InsightsReport({ center, label }: { center: LatLng; label?: strin
 
         <div className="mt-6 flex flex-wrap items-end justify-between gap-x-8 gap-y-5">
           <div className="min-w-0">
-            <h1 className="max-w-3xl text-[clamp(2rem,5.5vw,3.5rem)] leading-[1.03] text-ink">
+            <h1 className="text-ink max-w-3xl text-[clamp(2rem,5.5vw,3.5rem)] leading-[1.03]">
               {address.formatted}
             </h1>
             <p className="mt-3 flex flex-wrap items-center gap-2">
@@ -180,7 +188,10 @@ async function InsightsReport({ center, label }: { center: LatLng; label?: strin
         </FieldSection>
       </div>
 
-      <div className="pop mt-16 grid gap-x-10 gap-y-16 lg:grid-cols-2" style={{ animationDelay: '260ms' }}>
+      <div
+        className="pop mt-16 grid gap-x-10 gap-y-16 lg:grid-cols-2"
+        style={{ animationDelay: '260ms' }}
+      >
         <FieldSection title="Who lives here" icon={Users} accent="sea" note="Census, 5-year">
           {insights.demographics.ok ? (
             <DemographicsPanel demographics={insights.demographics.data} />
@@ -199,7 +210,12 @@ async function InsightsReport({ center, label }: { center: LatLng; label?: strin
       </div>
 
       <div className="pop mt-16" style={{ animationDelay: '320ms' }}>
-        <FieldSection title="Who else lives here" icon={BirdIcon} accent="lime" note="Bird sightings">
+        <FieldSection
+          title="Who else lives here"
+          icon={BirdIcon}
+          accent="lime"
+          note="Bird sightings"
+        >
           {insights.birds.ok ? (
             <BirdPanel birds={insights.birds.data} />
           ) : (
@@ -208,13 +224,13 @@ async function InsightsReport({ center, label }: { center: LatLng; label?: strin
         </FieldSection>
       </div>
 
-      <footer className="mt-20 rounded-3xl border-[3px] border-ink bg-cream-deep px-6 py-5">
-        <p className="max-w-2xl text-sm leading-relaxed text-ink-soft">
+      <footer className="border-ink bg-cream-deep mt-20 rounded-3xl border-[3px] px-6 py-5">
+        <p className="text-ink-soft max-w-2xl text-sm leading-relaxed">
           These scores are simple heuristics over open data, not official indices. How much shows up
           depends on how thoroughly OpenStreetMap volunteers have mapped the area, which varies a
           lot between cities and the countryside.
         </p>
-        <p className="mt-3 text-xs text-ink-faint">
+        <p className="text-ink-faint mt-3 text-xs">
           Generated {new Date(insights.generatedAt).toUTCString()}
         </p>
       </footer>

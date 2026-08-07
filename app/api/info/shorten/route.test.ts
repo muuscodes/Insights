@@ -70,7 +70,9 @@ describe('GET /api/info/shorten', () => {
     const body = await (await GET(request(REPORT_PATH))).json()
 
     expect(body.shortened).toBe(false)
-    expect(body.url).toBe('https://insights.example.com/info/insights/37.759900,-122.414800?q=Mission')
+    expect(body.url).toBe(
+      'https://insights.example.com/info/insights/37.759900,-122.414800?q=Mission',
+    )
   })
 
   it('falls back when TinyURL answers with something unexpected', async () => {

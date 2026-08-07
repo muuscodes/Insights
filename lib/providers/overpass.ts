@@ -51,7 +51,8 @@ interface OverpassResponse {
  * re-checked here rather than trusted from the caller.
  */
 function num(value: number): string {
-  if (!Number.isFinite(value)) throw new UpstreamError('Refusing to build a query from a non-finite number')
+  if (!Number.isFinite(value))
+    throw new UpstreamError('Refusing to build a query from a non-finite number')
   return value.toFixed(6)
 }
 
@@ -217,7 +218,10 @@ export async function fetchPois(center: LatLng): Promise<OverpassResult> {
   const nearFeatures = dedupe(
     nearElements
       .map((element) => toFeature(element, center))
-      .filter((feature): feature is TaggedFeature => feature !== null && feature.distanceM <= WALK_RADIUS_M),
+      .filter(
+        (feature): feature is TaggedFeature =>
+          feature !== null && feature.distanceM <= WALK_RADIUS_M,
+      ),
   )
 
   const classified: Poi[] = []

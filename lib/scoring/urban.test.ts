@@ -51,8 +51,7 @@ describe('computeUrbanIndex', () => {
 
   it('increases monotonically with population density', () => {
     const scores = [200, 1000, 5000, 15_000, 40_000].map(
-      (population) =>
-        computeUrbanIndex({ poiCount: 300, population, landAreaSqMi: 1 }).index,
+      (population) => computeUrbanIndex({ poiCount: 300, population, landAreaSqMi: 1 }).index,
     )
     expect(scores).toEqual([...scores].sort((a, b) => a - b))
   })
