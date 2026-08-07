@@ -2,11 +2,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { __resetRateLimitForTests } from '@/lib/ratelimit'
 
-const fetchText = vi.fn()
+const fetchJson = vi.fn()
 
 vi.mock('@/lib/http', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/http')>()
-  return { ...actual, fetchText: (...args: unknown[]) => fetchText(...args) }
+  return { ...actual, fetchJson: (...args: unknown[]) => fetchJson(...args) }
 })
 
 const { GET } = await import('./route')
@@ -17,26 +17,45 @@ const request = (path: string, host = 'insights.example.com', ip = '203.0.113.3'
   })
 
 const REPORT_PATH = '/info/insights/37.759900,-122.414800?q=Mission'
+const FULL_URL = 'https://insights.example.com/info/insights/37.759900,-122.414800?q=Mission'
 
 beforeEach(() => {
   __resetRateLimitForTests()
-  fetchText.mockReset()
-  fetchText.mockResolvedValue('https://tinyurl.com/abc1234')
+  fetchJson.mockReset()
+  fetchJson.mockResolvedValue({ data: { tiny_url: 'https://tinyurl.com/abc1234' } })
+  vi.stubEnv('TINYURL_API_TOKEN', 'test-token')
 })
 
 afterEach(() => {
+  vi.unstubAllEnvs()
   vi.clearAllMocks()
 })
 
 describe('GET /api/info/shorten', () => {
-  it('shortens a report path', async () => {
+  it('shortens a report path through the v2 API', async () => {
     const body = await (await GET(request(REPORT_PATH))).json()
 
     expect(body).toEqual({ url: 'https://tinyurl.com/abc1234', shortened: true })
 
+    // v2, not the deprecated tinyurl.com/api-create.php endpoint.
+    const [url, options] = fetchJson.mock.calls[0] as [string, Record<string, unknown>]
+    expect(url).toBe('https://api.tinyurl.com/create')
+    expect(options.method).toBe('POST')
+    expect((options.headers as Record<string, string>).Authorization).toBe('Bearer test-token')
+
     // It must send TinyURL an absolute URL built from OUR origin.
-    const sent = String(fetchText.mock.calls[0]?.[0])
-    expect(sent).toContain(encodeURIComponent('https://insights.example.com/info/insights/'))
+    expect(JSON.parse(options.body as string).url).toBe(FULL_URL)
+  })
+
+  it('returns the full URL, unshortened, when no token is configured', async () => {
+    // The point of keeping this optional: the app needs no second API key.
+    vi.stubEnv('TINYURL_API_TOKEN', '')
+
+    const body = await (await GET(request(REPORT_PATH))).json()
+
+    expect(body.shortened).toBe(false)
+    expect(body.url).toBe(FULL_URL)
+    expect(fetchJson).not.toHaveBeenCalled()
   })
 
   it.each([
@@ -50,37 +69,36 @@ describe('GET /api/info/shorten', () => {
 
     expect(response.status).toBe(400)
     // The whole point: never let this become an open URL shortener.
-    expect(fetchText).not.toHaveBeenCalled()
+    expect(fetchJson).not.toHaveBeenCalled()
   })
 
   it('does not call TinyURL for a host it could never resolve', async () => {
     for (const host of ['localhost:3000', '127.0.0.1:3000', 'dev.local']) {
-      fetchText.mockClear()
+      fetchJson.mockClear()
       const body = await (await GET(request(REPORT_PATH, host))).json()
 
       expect(body.shortened, host).toBe(false)
       expect(body.url, host).toContain('/info/insights/')
-      expect(fetchText, host).not.toHaveBeenCalled()
+      expect(fetchJson, host).not.toHaveBeenCalled()
     }
   })
 
   it('falls back to the full URL when TinyURL fails', async () => {
-    fetchText.mockRejectedValue(new Error('tinyurl down'))
+    fetchJson.mockRejectedValue(new Error('tinyurl down'))
 
     const body = await (await GET(request(REPORT_PATH))).json()
 
     expect(body.shortened).toBe(false)
-    expect(body.url).toBe(
-      'https://insights.example.com/info/insights/37.759900,-122.414800?q=Mission',
-    )
+    expect(body.url).toBe(FULL_URL)
   })
 
-  it('falls back when TinyURL answers with something unexpected', async () => {
-    fetchText.mockResolvedValue('Error: invalid url')
+  it('falls back when the response carries no tiny_url', async () => {
+    fetchJson.mockResolvedValue({ data: {}, errors: ['Unauthenticated.'] })
 
     const body = await (await GET(request(REPORT_PATH))).json()
+
     expect(body.shortened).toBe(false)
-    expect(body.url).toContain('insights.example.com')
+    expect(body.url).toBe(FULL_URL)
   })
 
   it('rate limits an aggressive client', async () => {

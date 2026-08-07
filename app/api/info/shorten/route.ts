@@ -1,20 +1,27 @@
 import { NextResponse } from 'next/server'
 
-import { fetchText } from '@/lib/http'
+import { fetchJson } from '@/lib/http'
 import { clientKey, rateLimit } from '@/lib/ratelimit'
 
 /**
- * Shorten a report link with TinyURL.
+ * Shorten a report link.
  *
  * The client sends a path, never a full URL, and the absolute URL is rebuilt
  * here from this deployment's own origin. That matters: accepting a URL from
  * the caller would turn this route into an open URL shortener that anyone could
  * point at anything, with our deployment taking the blame for the traffic.
  *
- * TinyURL's legacy endpoint needs no key and answers in plain text.
+ * Uses TinyURL's v2 API. The old `tinyurl.com/api-create.php` endpoint needs no
+ * token and does still answer, but it is deprecated and not worth building on.
+ * v2 wants a token, free from https://tinyurl.com/app/settings/api.
+ *
+ * Shortening stays optional on purpose. With no token configured this returns
+ * the full URL and reports `shortened: false`, the copy button copies that, and
+ * nothing breaks. A share button should not be the thing that forces a second
+ * API key on the deployment.
  */
 
-const TINYURL_ENDPOINT = 'https://tinyurl.com/api-create.php'
+const TINYURL_ENDPOINT = 'https://api.tinyurl.com/create'
 
 const LIMIT = 20
 const WINDOW_MS = 60_000
@@ -23,6 +30,11 @@ const CACHE_SECONDS = 60 * 60 * 24 * 30
 
 /** Only report pages are shortenable. */
 const SHORTENABLE = /^\/info\/insights\//
+
+interface TinyUrlResponse {
+  data?: { tiny_url?: string }
+  errors?: string[]
+}
 
 function originOf(request: Request): string | null {
   const host = request.headers.get('x-forwarded-host') ?? request.headers.get('host')
@@ -71,18 +83,26 @@ export async function GET(request: Request): Promise<NextResponse> {
   }
 
   const longUrl = absolute.toString()
+  const token = process.env.TINYURL_API_TOKEN
 
-  if (!isPubliclyReachable(origin)) {
+  if (!token || !isPubliclyReachable(origin)) {
     return NextResponse.json({ url: longUrl, shortened: false })
   }
 
   try {
-    const short = await fetchText(`${TINYURL_ENDPOINT}?url=${encodeURIComponent(longUrl)}`, {
+    const response = await fetchJson<TinyUrlResponse>(TINYURL_ENDPOINT, {
       revalidate: CACHE_SECONDS,
       timeoutMs: 6000,
+      method: 'POST',
+      body: JSON.stringify({ url: longUrl }),
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
     })
 
-    if (!short.startsWith('https://tinyurl.com/')) {
+    const short = response.data?.tiny_url
+    if (!short || !short.startsWith('https://')) {
       return NextResponse.json({ url: longUrl, shortened: false })
     }
 

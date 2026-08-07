@@ -80,36 +80,6 @@ export async function fetchJson<T>(url: string, options: FetchOptions): Promise<
   }
 }
 
-/** Same guarantees as `fetchJson`, for endpoints that answer in plain text. */
-export async function fetchText(url: string, options: FetchOptions): Promise<string> {
-  const { revalidate, timeoutMs = DEFAULT_TIMEOUT_MS } = options
-
-  const controller = new AbortController()
-  const timer = setTimeout(() => controller.abort(), timeoutMs)
-
-  try {
-    const response = await fetch(url, {
-      signal: controller.signal,
-      headers: { 'User-Agent': USER_AGENT },
-      next: { revalidate },
-    })
-
-    if (!response.ok) {
-      throw new UpstreamError(`Upstream responded ${response.status}`, response.status)
-    }
-
-    return (await response.text()).trim()
-  } catch (error) {
-    if (error instanceof UpstreamError) throw error
-    if (error instanceof Error && error.name === 'AbortError') {
-      throw new UpstreamError(`Upstream timed out after ${timeoutMs}ms`)
-    }
-    throw new UpstreamError(error instanceof Error ? error.message : 'Upstream request failed')
-  } finally {
-    clearTimeout(timer)
-  }
-}
-
 /**
  * Try each candidate in turn, returning the first success. Used for Overpass,
  * where the public instances rate limit aggressively and going down the mirror
