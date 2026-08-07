@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <rect width="32" height="32" rx="8" fill="#e05a47" />
+  <g fill="#fdf9f3">
+    <!-- Tall tower on the left -->
+    <path d="M6 11a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v15H6z" />
+    <!-- Shorter block on the right -->
+    <path d="M16 15a1 1 0 0 1 1-1h9a1 1 0 0 1 1 1v11h-11z" />
+  </g>
+  <g fill="#e05a47">
+    <!-- Windows -->
+    <rect x="8" y="13" width="2.2" height="2.2" rx="0.5" />
+    <rect x="11.8" y="13" width="2.2" height="2.2" rx="0.5" />
+    <rect x="8" y="17" width="2.2" height="2.2" rx="0.5" />
+    <rect x="11.8" y="17" width="2.2" height="2.2" rx="0.5" />
+    <rect x="8" y="21" width="2.2" height="2.2" rx="0.5" />
+    <rect x="11.8" y="21" width="2.2" height="2.2" rx="0.5" />
+    <rect x="18" y="17.5" width="2.2" height="2.2" rx="0.5" />
+    <rect x="22" y="17.5" width="2.2" height="2.2" rx="0.5" />
+    <rect x="18" y="21.5" width="2.2" height="2.2" rx="0.5" />
+    <rect x="22" y="21.5" width="2.2" height="2.2" rx="0.5" />
+  </g>
+</svg>

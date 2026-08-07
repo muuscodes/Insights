@@ -1,0 +1,208 @@
+@import 'tailwindcss';
+
+/*
+  Tone: relaxed and friendly, closer to a well-made puzzle game than a property
+  report. Warm cream ground, soft rounded cards, a small set of candy-ish
+  accent colours that each own one section, and almost no uppercase tracking.
+*/
+
+@theme {
+  --color-cream: #fdf9f3;
+  --color-cream-deep: #f6efe3;
+  --color-card: #ffffff;
+
+  --color-ink: #2b2724;
+  --color-ink-soft: #6b625b;
+  --color-ink-faint: #9a9089;
+
+  --color-edge: #ece3d6;
+  --color-edge-strong: #ddd1be;
+
+  /* One accent per section, so a glance tells you where you are. */
+  --color-berry: #e05a47;
+  --color-berry-wash: #fdeae6;
+  --color-leaf: #3f9068;
+  --color-leaf-wash: #e3f3ea;
+  --color-sky: #3d84c6;
+  --color-sky-wash: #e4f0fa;
+  --color-plum: #8b5cc4;
+  --color-plum-wash: #f0e9fa;
+  --color-honey: #dd9a2b;
+  --color-honey-wash: #fcf0da;
+
+  --font-display: var(--font-fraunces), ui-serif, Georgia, serif;
+  --font-body: var(--font-outfit), ui-sans-serif, system-ui, sans-serif;
+
+  --radius-card: 1.25rem;
+  --radius-pill: 999px;
+}
+
+:root {
+  color-scheme: light;
+}
+
+body {
+  background-color: var(--color-cream);
+  color: var(--color-ink);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+@layer components {
+  /*
+    Shared card. Full rounded border and a soft drop shadow, never a single
+    coloured edge, so emphasis always reads as a whole object.
+  */
+  .card {
+    background-color: var(--color-card);
+    border: 1px solid var(--color-edge);
+    border-radius: var(--radius-card);
+    box-shadow: 0 1px 2px rgb(43 39 36 / 0.04), 0 8px 24px -12px rgb(43 39 36 / 0.14);
+  }
+
+  /* Small rounded chip used for counts, radii and units. */
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    border-radius: var(--radius-pill);
+    padding: 0.2rem 0.6rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    line-height: 1.4;
+  }
+}
+
+/* One orchestrated page load beats scattered micro-animations. */
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.rise {
+  animation: rise 0.6s cubic-bezier(0.2, 0.7, 0.3, 1) both;
+}
+
+@keyframes sweep {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+.sweep {
+  transform-origin: left center;
+  animation: sweep 1s cubic-bezier(0.2, 0.7, 0.3, 1) both;
+}
+
+/* Loading state: a pin dropping onto a map, then ripples going out. */
+@keyframes drop-in {
+  0% {
+    opacity: 0;
+    transform: translateY(-38px) scale(0.7);
+  }
+  60% {
+    opacity: 1;
+    transform: translateY(4px) scale(1.06);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes ripple {
+  0% {
+    opacity: 0.55;
+    transform: scale(0.25);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1);
+  }
+}
+
+@keyframes bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+.pin-drop {
+  animation: drop-in 0.7s cubic-bezier(0.2, 1.2, 0.4, 1) both;
+}
+
+.pin-bob {
+  animation: bob 2.4s ease-in-out 0.7s infinite;
+}
+
+.ripple {
+  animation: ripple 2.4s cubic-bezier(0.2, 0.6, 0.4, 1) infinite;
+}
+
+@keyframes shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+
+.shimmer {
+  background-image: linear-gradient(
+    90deg,
+    var(--color-cream-deep) 0%,
+    #fffdf9 50%,
+    var(--color-cream-deep) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.8s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rise,
+  .sweep,
+  .pin-drop,
+  .pin-bob,
+  .ripple,
+  .shimmer {
+    animation: none;
+  }
+}
+
+/* MapLibre ships its own control styling; round it off to match the cards. */
+.maplibregl-ctrl-group {
+  background: var(--color-card) !important;
+  border: 1px solid var(--color-edge) !important;
+  box-shadow: 0 4px 14px -8px rgb(43 39 36 / 0.3) !important;
+  border-radius: 0.75rem !important;
+  overflow: hidden;
+}
+
+.maplibregl-popup-content {
+  background: var(--color-card) !important;
+  border: 1px solid var(--color-edge-strong) !important;
+  border-radius: 0.85rem !important;
+  box-shadow: 0 10px 26px -14px rgb(43 39 36 / 0.4) !important;
+  padding: 0.55rem 0.8rem !important;
+  font-family: var(--font-body) !important;
+  font-size: 0.85rem !important;
+}
+
+.maplibregl-popup-tip {
+  border-top-color: var(--color-edge-strong) !important;
+  border-bottom-color: var(--color-edge-strong) !important;
+}
