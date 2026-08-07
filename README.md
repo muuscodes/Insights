@@ -19,7 +19,7 @@ This was a very quick turnaround so I handled the big stuff/polishing while AI h
 ### What the AI drove
 
 - All implementation, including the scoring heuristics and their calibration
-- The entire testing suite (173 tests)
+- The entire testing suite (174 tests)
 - First pass at UI and design
 - The backend API routes and database config
 
@@ -49,3 +49,4 @@ Once the first build was done, I did a lot of UI cleanup, added a few small task
 I really love to play Wordle and all its variants so that was the inspiration for the theme. I also
 wanted to have a clean landing page and then a separate generation/insights page. Simple is usually
 best so I tried not to leave too many things crowding the page.
+I wanted to use TinyURL but I just couldn't get it to work in the timeframe and it's not the biggest deal. Definitely something I would implement in the next version.
