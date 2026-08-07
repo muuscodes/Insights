@@ -129,27 +129,34 @@ export function AddressSearch({ autoFocus = false }: { autoFocus?: boolean }) {
 
   return (
     <div ref={containerRef} className="relative w-full">
-      <div className="rounded-pill border-ink bg-card flex items-stretch gap-2 border-[3px] p-2 shadow-[0_6px_0_var(--color-ink)]">
-        <span className="text-ink grid w-10 shrink-0 place-items-center">
-          <Search size={20} strokeWidth={2.75} aria-hidden />
-        </span>
+      {/*
+        Stacks below the small breakpoint. Side by side, the button and the
+        search icon left the field 84px wide on a 320px screen, which is not a
+        usable input. Full-width button underneath is also an easier tap target.
+      */}
+      <div className="border-ink bg-card sm:rounded-pill flex flex-col gap-2 rounded-3xl border-[3px] p-2 shadow-[0_6px_0_var(--color-ink)] sm:flex-row sm:items-stretch">
+        <div className="flex min-w-0 flex-1 items-center gap-2">
+          <span className="text-ink grid w-9 shrink-0 place-items-center sm:w-10">
+            <Search size={20} strokeWidth={2.75} aria-hidden />
+          </span>
 
-        <input
-          type="text"
-          value={query}
-          autoFocus={autoFocus}
-          onChange={(event) => setQuery(event.target.value)}
-          onKeyDown={onKeyDown}
-          onFocus={() => suggestions.length > 0 && setOpen(true)}
-          placeholder="Try 1600 Pennsylvania Ave NW"
-          aria-label="Street address"
-          role="combobox"
-          aria-expanded={open}
-          aria-controls={listId}
-          aria-autocomplete="list"
-          aria-activedescendant={active >= 0 ? `${listId}-${active}` : undefined}
-          className="text-ink placeholder:text-ink-faint min-w-0 flex-1 bg-transparent text-base outline-none sm:text-lg"
-        />
+          <input
+            type="text"
+            value={query}
+            autoFocus={autoFocus}
+            onChange={(event) => setQuery(event.target.value)}
+            onKeyDown={onKeyDown}
+            onFocus={() => suggestions.length > 0 && setOpen(true)}
+            placeholder="Try 1600 Pennsylvania Ave"
+            aria-label="Street address"
+            role="combobox"
+            aria-expanded={open}
+            aria-controls={listId}
+            aria-autocomplete="list"
+            aria-activedescendant={active >= 0 ? `${listId}-${active}` : undefined}
+            className="text-ink placeholder:text-ink-faint w-full min-w-0 flex-1 bg-transparent py-1.5 text-base outline-none sm:py-0 sm:text-lg"
+          />
+        </div>
 
         <button
           type="button"
@@ -158,7 +165,7 @@ export function AddressSearch({ autoFocus = false }: { autoFocus?: boolean }) {
             const choice = suggestions[active] ?? suggestions[0]
             if (choice) go(choice)
           }}
-          className="slab-press rounded-pill border-ink bg-berry font-display disabled:bg-ink-faint inline-flex shrink-0 items-center gap-2 border-[3px] px-6 py-3 text-base font-extrabold text-white shadow-[0_5px_0_var(--color-berry-deep)] disabled:cursor-not-allowed disabled:shadow-[0_5px_0_var(--color-ink-soft)]"
+          className="slab-press rounded-pill border-ink bg-berry font-display disabled:bg-ink-faint inline-flex w-full shrink-0 items-center justify-center gap-2 border-[3px] px-6 py-3 text-base font-extrabold text-white shadow-[0_5px_0_var(--color-berry-deep)] disabled:cursor-not-allowed disabled:shadow-[0_5px_0_var(--color-ink-soft)] sm:w-auto"
         >
           {navigating ? <Loader2 size={17} className="animate-spin" aria-hidden /> : null}
           {navigating ? 'Loading' : "Let's go"}
