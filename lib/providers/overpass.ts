@@ -2,6 +2,7 @@ import 'server-only'
 
 import { DRIVE_RADIUS_M, WALK_RADIUS_M, haversineMeters, type LatLng } from '../geo'
 import { UpstreamError, fetchJson, firstSuccessful } from '../http'
+import { dedupePois } from '../scoring/dedupe'
 import {
   NEAR_QUERY_FILTERS,
   OVERPASS_MIRRORS,
@@ -219,11 +220,15 @@ export async function fetchPois(center: LatLng): Promise<OverpassResult> {
       .filter((feature): feature is TaggedFeature => feature !== null && feature.distanceM <= WALK_RADIUS_M),
   )
 
-  const nearPois: Poi[] = []
+  const classified: Poi[] = []
   for (const feature of nearFeatures) {
     const category = classify(feature.tags)
-    if (category) nearPois.push({ ...feature, category })
+    if (category) classified.push({ ...feature, category })
   }
+
+  // Collapse the many polygons OSM uses for one real place before anything
+  // counts them.
+  const nearPois = dedupePois(classified)
 
   // Which categories still look thin after the 1-mile pass?
   const counts = new Map<CategoryKey, number>()
@@ -251,7 +256,7 @@ export async function fetchPois(center: LatLng): Promise<OverpassResult> {
 
       const merged = new Map<string, Poi>()
       for (const poi of [...nearPois, ...widePois]) merged.set(poi.id, poi)
-      drivePois = [...merged.values()]
+      drivePois = dedupePois([...merged.values()])
     } catch {
       // The wide pass is an enhancement. If it fails, the driving score still
       // computes from the 1-mile set; it just reads lower than it should.

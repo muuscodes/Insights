@@ -6,38 +6,36 @@ and what the block probably smells like.
 
 **Live:** _(filled in after deploy)_
 
-Built for the RentEngine interview challenge.
-
 ---
 
 ## What it does
 
-| Feature | How |
-| --- | --- |
-| **Walking Score** | Weighted amenity count inside 1 mile, with distance decay and diminishing returns |
-| **Driving Score** | Same engine at 5 miles, reweighted toward destinations worth a car trip |
-| **Urban / Suburban Index** | Amenity density blended with real census tract population density |
-| **Search history** | Last 8 lookups in `localStorage`, never sent to the server |
-| **Map** | MapLibre + OpenFreeMap vector tiles, amenities colored by category inside the 1-mile circle |
-| **Shareable page** | Coordinates live in the URL, so a link renders identically for anyone. Shortened via TinyURL on copy |
-| **Census demographics** | ACS 5-year population, age, income, home value, education for the tract |
-| **Scent profile** | Weighted smell sources within a half mile, ranked as scent notes |
-| **Birds** | Most-recorded species within a mile over the last ten years |
+| Feature                    | How                                                                                                  |
+| -------------------------- | ---------------------------------------------------------------------------------------------------- |
+| **Walking Score**          | Weighted amenity count inside 1 mile, with distance decay and diminishing returns                    |
+| **Driving Score**          | Same engine at 5 miles, reweighted toward destinations worth a car trip                              |
+| **Urban / Suburban Index** | Amenity density blended with real census tract population density                                    |
+| **Search history**         | Last 8 lookups in `localStorage`, never sent to the server                                           |
+| **Map**                    | MapLibre + OpenFreeMap vector tiles, amenities colored by category inside the 1-mile circle          |
+| **Shareable page**         | Coordinates live in the URL, so a link renders identically for anyone. Shortened via TinyURL on copy |
+| **Census demographics**    | ACS 5-year population, age, income, home value, education for the tract                              |
+| **Scent profile**          | Weighted smell sources within a half mile, ranked as scent notes                                     |
+| **Birds**                  | Most-recorded species within a mile over the last ten years                                          |
 
 ## Data sources
 
 All real, all free, one key.
 
-| Layer | Source | Key needed |
-| --- | --- | --- |
-| Address autocomplete | Photon (Komoot) | no |
-| Address to coordinates | US Census Geocoder | no |
-| Coordinates to census tract + land area | US Census Geographies | no |
-| Demographics | US Census ACS 5-year (2023) | **yes, free** |
-| Amenities | OpenStreetMap via Overpass | no |
-| Map tiles | OpenFreeMap | no |
-| Birds | GBIF occurrence records | no |
-| Link shortening | TinyURL legacy endpoint | no |
+| Layer                                   | Source                      | Key needed    |
+| --------------------------------------- | --------------------------- | ------------- |
+| Address autocomplete                    | Photon (Komoot)             | no            |
+| Address to coordinates                  | US Census Geocoder          | no            |
+| Coordinates to census tract + land area | US Census Geographies       | no            |
+| Demographics                            | US Census ACS 5-year (2023) | **yes, free** |
+| Amenities                               | OpenStreetMap via Overpass  | no            |
+| Map tiles                               | OpenFreeMap                 | no            |
+| Birds                                   | GBIF occurrence records     | no            |
+| Link shortening                         | TinyURL legacy endpoint     | no            |
 
 The Census pieces are the same public data behind
 [neighborhood-insights.com](https://neighborhood-insights.com), which is where
@@ -72,8 +70,7 @@ The brief said to keep the math simple and explain the reasoning, so the whole
 scoring engine is pure functions in `lib/scoring/` with no I/O.
 
 **The first real problem was noise.** A 1-mile Overpass query around the White
-House returns 3,106 tagged features. The single most common one is `bench`, at
-977. Then waste baskets, then bicycle parking. Counting features in a radius
+House returns 3,106 tagged features. The single most common one is `bench`, at 977. Then waste baskets, then bicycle parking. Counting features in a radius
 would score a park bench like a grocery store, so scoring runs off a
 **weighted category whitelist** (`lib/scoring/taxonomy.ts`), and anything
 unrecognized contributes nothing.
@@ -110,11 +107,11 @@ underlying numbers, so the reasoning is visible.
 
 Sanity check against real addresses:
 
-| Place | Walk | Urban index | Residents / sq mi |
-| --- | --- | --- | --- |
-| Mission District, San Francisco | 100 | 96, Urban Core | 21,305 |
-| Naperville, Illinois | 84 | 52, Urban | 3,121 |
-| Rural Nebraska | 0 | 0, Rural | 2 |
+| Place                           | Walk | Urban index    | Residents / sq mi |
+| ------------------------------- | ---- | -------------- | ----------------- |
+| Mission District, San Francisco | 100  | 96, Urban Core | 21,305            |
+| Naperville, Illinois            | 84   | 52, Urban      | 3,121             |
+| Rural Nebraska                  | 0    | 0, Rural       | 2                 |
 
 ### Making Overpass usable
 
@@ -123,10 +120,10 @@ This was most of the engineering. Three problems, all found by measuring.
 **A 5-mile query does not survive a dense city.** Measured around Times Square:
 31,785 elements, 10.9 MB, 36 seconds. That would blow the serverless timeout. So
 the driving query is **adaptive**: the 1-mile pass runs always, then a wider pass
-runs *only for categories the first pass left short*. This is self-balancing.
+runs _only for categories the first pass left short_. This is self-balancing.
 Downtown saturates nearly every category inside a mile, so the wide pass asks for
 little or nothing. A rural address triggers a wide pass that returns almost
-nothing, because the area really is empty. Dense *and* wide is the one case that
+nothing, because the area really is empty. Dense _and_ wide is the one case that
 cannot happen.
 
 **Cost tracks clause count, not payload.** Twelve clauses carrying value regexes
@@ -142,11 +139,11 @@ for 24 hours.
 
 Net effect, measured:
 
-| | Before | After |
-| --- | --- | --- |
-| Cold, dense urban | 102 s | 4.1 s |
-| Cold, suburban | 106 s | 15.6 s |
-| Warm (cached) | | 0.1 s |
+|                   | Before | After  |
+| ----------------- | ------ | ------ |
+| Cold, dense urban | 102 s  | 4.1 s  |
+| Cold, suburban    | 106 s  | 15.6 s |
+| Warm (cached)     |        | 0.1 s  |
 
 **One bug worth calling out.** The original mirror list included
 `overpass.osm.ch`. That is the Swiss instance and only carries Switzerland, so it

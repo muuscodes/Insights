@@ -102,10 +102,25 @@ const RULES: ReadonlyArray<{ tag: string; values: readonly string[]; category: C
     category: 'school',
   },
   {
+    // `garden` is deliberately absent. OSM uses it for every planter bed and
+    // building courtyard: within a mile of the White House it accounts for 515
+    // of the 652 features that would otherwise be counted as parks. It stays
+    // available to the scent profile, which reads raw tags.
     tag: 'leisure',
-    values: ['park', 'garden', 'playground', 'dog_park', 'nature_reserve', 'pitch', 'recreation_ground'],
+    values: [
+      'park',
+      'playground',
+      'dog_park',
+      'nature_reserve',
+      'recreation_ground',
+      'village_green',
+      'common',
+    ],
     category: 'park',
   },
+  // A pitch is a court or field, usually inside a park. It belongs with the
+  // other recreation facilities, not counted as a park in its own right.
+  { tag: 'leisure', values: ['pitch'], category: 'entertainment' },
   { tag: 'amenity', values: ['bus_station', 'ferry_terminal'], category: 'transit' },
   { tag: 'highway', values: ['bus_stop'], category: 'transit' },
   { tag: 'railway', values: ['station', 'halt', 'tram_stop', 'subway_entrance'], category: 'transit' },
