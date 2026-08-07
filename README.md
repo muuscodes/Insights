@@ -4,22 +4,21 @@
 
 ## What I built versus the AI
 
-This was a very quick turnaround so I handled the big stuff/polishing while AI handled the bulk of
-implementation.
+This was a very quick turnaround so I handled the big stuff/polishing while AI handled the bulk of the implementation.
 
-### Specifically, I built
+### What I built
 
-- I decided which features to build such as the scent profile and the bird profile.
+- I decided which features to build such as the scent profile and the bird profile
 - I chose the data sources after doing some research, specifically wanting US census data after
   seeing a few similar websites employing that dataset
 - The tech stack was my decision as I just went with what I'm most familiar with (Next.js +
   TypeScript, TailwindCSS, Vitest, Zod, pnpm, etc.)
-- The hero artwork, which I generated separately with nanobanana.
-- All the animations, color scheme, and layout is my taste.
+- The hero artwork, which I generated separately with nanobanana
+- All the animations, color scheme, and layout is my taste
 
 ### What the AI drove
 
-- All implementation, including the scoring heuristics and their calibration.
+- All implementation, including the scoring heuristics and their calibration
 - The entire testing suite (173 tests)
 - First pass at UI and design
 - The backend API routes and database config
@@ -35,8 +34,7 @@ conversation with Claude to create a plan for the build and then set it working.
 the initial design, I generated photos for the hero and set up the Vercel project.
 
 Once the first build was done, I did a lot of UI cleanup, added a few small tasks (using TinyURL for
-example) and had a good hour of testing and bug fixes. Finished by tightening up the UI and theme,
-making sure the CI pipeline was working, and verifying everything shipped cleanly to Vercel.
+example) and had a good hour or two of testing and bug fixes. Finished by tightening up the UI and theme, making sure the CI pipeline was working, and verifying everything shipped cleanly to Vercel.
 
 ## Assumptions/design decisions
 

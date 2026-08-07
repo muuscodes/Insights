@@ -106,7 +106,6 @@ export default function InfoHome() {
         <div className="grid gap-14 md:grid-cols-2">
           <div>
             <h2 className="text-ink text-4xl">How the scores work</h2>
-            <p className="text-ink-soft mt-2">Three simple rules, no black box.</p>
 
             <div className="mt-7 space-y-4">
               {STEPS.map((step) => (
@@ -132,7 +131,6 @@ export default function InfoHome() {
 
           <aside>
             <h2 className="text-ink text-4xl">Recent looks</h2>
-            <p className="text-ink-soft mt-2">Saved on this device only.</p>
             <div className="mt-7">
               <SearchHistory />
             </div>
