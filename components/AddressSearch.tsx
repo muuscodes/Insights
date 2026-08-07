@@ -129,8 +129,8 @@ export function AddressSearch({ autoFocus = false }: { autoFocus?: boolean }) {
 
   return (
     <div ref={containerRef} className="relative w-full">
-      <div className="flex items-stretch gap-2 rounded-pill border-[3px] border-ink bg-card p-2 shadow-[0_6px_0_var(--color-ink)]">
-        <span className="grid w-10 shrink-0 place-items-center text-ink">
+      <div className="rounded-pill border-ink bg-card flex items-stretch gap-2 border-[3px] p-2 shadow-[0_6px_0_var(--color-ink)]">
+        <span className="text-ink grid w-10 shrink-0 place-items-center">
           <Search size={20} strokeWidth={2.75} aria-hidden />
         </span>
 
@@ -148,7 +148,7 @@ export function AddressSearch({ autoFocus = false }: { autoFocus?: boolean }) {
           aria-controls={listId}
           aria-autocomplete="list"
           aria-activedescendant={active >= 0 ? `${listId}-${active}` : undefined}
-          className="min-w-0 flex-1 bg-transparent text-base text-ink outline-none placeholder:text-ink-faint sm:text-lg"
+          className="text-ink placeholder:text-ink-faint min-w-0 flex-1 bg-transparent text-base outline-none sm:text-lg"
         />
 
         <button
@@ -158,7 +158,7 @@ export function AddressSearch({ autoFocus = false }: { autoFocus?: boolean }) {
             const choice = suggestions[active] ?? suggestions[0]
             if (choice) go(choice)
           }}
-          className="slab-press inline-flex shrink-0 items-center gap-2 rounded-pill border-[3px] border-ink bg-berry px-6 py-3 font-display text-base font-extrabold text-white shadow-[0_5px_0_var(--color-berry-deep)] disabled:cursor-not-allowed disabled:bg-ink-faint disabled:shadow-[0_5px_0_var(--color-ink-soft)]"
+          className="slab-press rounded-pill border-ink bg-berry font-display disabled:bg-ink-faint inline-flex shrink-0 items-center gap-2 border-[3px] px-6 py-3 text-base font-extrabold text-white shadow-[0_5px_0_var(--color-berry-deep)] disabled:cursor-not-allowed disabled:shadow-[0_5px_0_var(--color-ink-soft)]"
         >
           {navigating ? <Loader2 size={17} className="animate-spin" aria-hidden /> : null}
           {navigating ? 'Loading' : "Let's go"}
@@ -167,9 +167,9 @@ export function AddressSearch({ autoFocus = false }: { autoFocus?: boolean }) {
 
       <div className="mt-3 min-h-8 px-2">
         {loading ? (
-          <p className="font-display font-bold text-ink-faint">Looking...</p>
+          <p className="font-display text-ink-faint font-bold">Looking...</p>
         ) : nonUsOnly ? (
-          <p className="inline-flex items-start gap-2 rounded-2xl border-[3px] border-ink bg-sun px-4 py-2 text-sm text-ink">
+          <p className="border-ink bg-sun text-ink inline-flex items-start gap-2 rounded-2xl border-[3px] px-4 py-2 text-sm">
             <Globe2 size={17} strokeWidth={2.75} className="mt-0.5 shrink-0" aria-hidden />
             <span>
               That is an address outside the US. Non-US addresses will be available in an upcoming
@@ -177,7 +177,7 @@ export function AddressSearch({ autoFocus = false }: { autoFocus?: boolean }) {
             </span>
           </p>
         ) : noUsMatch ? (
-          <p className="font-display font-bold text-ink-faint">
+          <p className="font-display text-ink-faint font-bold">
             No US address matched that yet. Keep typing.
           </p>
         ) : null}
@@ -187,24 +187,34 @@ export function AddressSearch({ autoFocus = false }: { autoFocus?: boolean }) {
         <ul
           id={listId}
           role="listbox"
-          className="absolute z-20 mt-1 w-full overflow-hidden rounded-3xl border-[3px] border-ink bg-card p-2 shadow-[0_6px_0_var(--color-ink)]"
+          // Capped and scrollable so a long list cannot run off a short screen.
+          className="border-ink bg-card absolute z-40 mt-2 max-h-[min(20rem,45vh)] w-full overflow-y-auto rounded-3xl border-[3px] p-2 shadow-[0_6px_0_var(--color-ink)]"
         >
           {suggestions.map((suggestion, index) => (
-            <li key={suggestion.id} id={`${listId}-${index}`} role="option" aria-selected={index === active}>
+            <li
+              key={suggestion.id}
+              id={`${listId}-${index}`}
+              role="option"
+              aria-selected={index === active}
+            >
               <button
                 type="button"
                 onMouseEnter={() => setActive(index)}
                 onClick={() => go(suggestion)}
                 className={`flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left ${
-                  index === active ? 'border-[2.5px] border-ink bg-sun' : 'border-[2.5px] border-transparent'
+                  index === active
+                    ? 'border-ink bg-sun border-[2.5px]'
+                    : 'border-[2.5px] border-transparent'
                 }`}
               >
-                <MapPin size={18} strokeWidth={2.75} aria-hidden className="shrink-0 text-ink" />
+                <MapPin size={18} strokeWidth={2.75} aria-hidden className="text-ink shrink-0" />
                 <span className="min-w-0">
-                  <span className="block truncate font-display font-extrabold text-ink">
+                  <span className="font-display text-ink block truncate font-extrabold">
                     {suggestion.primary}
                   </span>
-                  <span className="block truncate text-sm text-ink-soft">{suggestion.secondary}</span>
+                  <span className="text-ink-soft block truncate text-sm">
+                    {suggestion.secondary}
+                  </span>
                 </span>
               </button>
             </li>

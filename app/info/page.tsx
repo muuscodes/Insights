@@ -50,7 +50,14 @@ const SOURCES = [
 export default function InfoHome() {
   return (
     <main>
-      <section className="relative flex min-h-[92vh] flex-col justify-end overflow-hidden bg-[#0a0a0a] px-6 pb-20 pt-24 sm:px-10">
+      {/*
+        No `overflow-hidden` here on purpose: it clipped the address suggestions,
+        which have to be free to hang past the bottom of the hero. The image and
+        scrim are both `absolute inset-0`, so they are already bounded without
+        it. `z-30` keeps the whole hero, and therefore the open dropdown, above
+        the section that follows.
+      */}
+      <section className="relative z-30 flex min-h-[88vh] flex-col justify-end bg-[#0a0a0a] px-6 pt-24 pb-28 sm:px-10">
         <picture>
           <source media="(max-width: 640px)" type="image/avif" srcSet="/info-hero-mobile.avif" />
           <source media="(max-width: 640px)" type="image/webp" srcSet="/info-hero-mobile.webp" />
@@ -67,13 +74,13 @@ export default function InfoHome() {
         <div aria-hidden style={heroScrim} className="absolute inset-0" />
 
         <div className="relative mx-auto w-full max-w-5xl">
-          <p className="pop inline-flex items-center gap-2 rounded-pill border-[3px] border-ink bg-sun px-4 py-1.5 font-display font-extrabold text-ink shadow-[0_4px_0_var(--color-ink)]">
+          <p className="pop rounded-pill border-ink bg-sun font-display text-ink inline-flex items-center gap-2 border-[3px] px-4 py-1.5 font-extrabold shadow-[0_4px_0_var(--color-ink)]">
             <Building2 size={17} strokeWidth={2.75} aria-hidden />
             Address Insights
           </p>
 
           <h1
-            className="pop mt-6 max-w-3xl text-[clamp(2.75rem,8.5vw,6rem)] leading-[0.95] text-cream"
+            className="pop text-cream mt-6 max-w-3xl text-[clamp(2.75rem,8.5vw,6rem)] leading-[0.95]"
             style={{ animationDelay: '70ms' }}
           >
             What is it actually
@@ -82,7 +89,7 @@ export default function InfoHome() {
           </h1>
 
           <p
-            className="pop mt-6 max-w-xl text-lg leading-relaxed text-cream/90"
+            className="pop mt-6 max-w-xl text-lg leading-relaxed text-white"
             style={{ animationDelay: '140ms' }}
           >
             Type in any US street address. We will tell you how walkable it is, who lives nearby,
@@ -95,55 +102,55 @@ export default function InfoHome() {
         </div>
       </section>
 
-      <section className="mx-auto w-full max-w-5xl px-6 py-20 sm:px-10">
-        <div className="grid gap-14 md:grid-cols-[1.4fr_1fr]">
+      <section className="relative z-0 mx-auto w-full max-w-5xl px-6 py-20 sm:px-10">
+        <div className="grid gap-14 md:grid-cols-2">
           <div>
-            <h2 className="text-4xl text-ink">How the scores work</h2>
-            <p className="mt-2 text-ink-soft">Three simple rules, no black box.</p>
+            <h2 className="text-ink text-4xl">How the scores work</h2>
+            <p className="text-ink-soft mt-2">Three simple rules, no black box.</p>
 
             <div className="mt-7 space-y-4">
               {STEPS.map((step) => (
                 <article key={step.title} className="slab flex gap-4 px-5 py-5">
                   <span
-                    className={`grid h-12 w-12 shrink-0 place-items-center rounded-2xl border-[3px] border-ink text-ink ${step.color}`}
+                    className={`border-ink text-ink grid h-12 w-12 shrink-0 place-items-center rounded-2xl border-[3px] ${step.color}`}
                   >
                     <step.icon size={22} strokeWidth={2.75} aria-hidden />
                   </span>
                   <div>
-                    <h3 className="text-2xl text-ink">{step.title}</h3>
-                    <p className="mt-1 leading-relaxed text-ink-soft">{step.body}</p>
+                    <h3 className="text-ink text-2xl">{step.title}</h3>
+                    <p className="text-ink-soft mt-1 leading-relaxed">{step.body}</p>
                   </div>
                 </article>
               ))}
             </div>
 
-            <p className="mt-6 leading-relaxed text-ink-soft">
+            <p className="text-ink-soft mt-6 leading-relaxed">
               These are deliberately simple heuristics, not official indices. The reasoning is shown
               on every result so you can judge the number for yourself.
             </p>
           </div>
 
           <aside>
-            <h2 className="text-4xl text-ink">Recent looks</h2>
-            <p className="mt-2 text-ink-soft">Saved on this device only.</p>
+            <h2 className="text-ink text-4xl">Recent looks</h2>
+            <p className="text-ink-soft mt-2">Saved on this device only.</p>
             <div className="mt-7">
               <SearchHistory />
             </div>
 
-            <h2 className="mt-12 text-4xl text-ink">Where it comes from</h2>
+            <h2 className="text-ink mt-12 text-4xl">Where it comes from</h2>
             <ul className="mt-6 space-y-3">
               {SOURCES.map((source) => (
                 <li key={source.label} className="slab flex items-center gap-3 px-4 py-3">
                   <span
                     aria-hidden
-                    className={`h-5 w-5 shrink-0 rounded-lg border-[3px] border-ink ${source.color}`}
+                    className={`border-ink h-5 w-5 shrink-0 rounded-lg border-[3px] ${source.color}`}
                   />
                   <span className="text-ink-soft">{source.label}</span>
                 </li>
               ))}
             </ul>
 
-            <p className="mt-6 flex items-start gap-2 text-sm text-ink-faint">
+            <p className="text-ink-faint mt-6 flex items-start gap-2 text-sm">
               <Bird size={16} strokeWidth={2.75} className="mt-0.5 shrink-0" aria-hidden />
               All real data, all free, one API key.
             </p>
