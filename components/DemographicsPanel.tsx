@@ -19,7 +19,7 @@ export function DemographicsPanel({ demographics }: { demographics: Demographics
       value: demographics.medianAge === null ? null : demographics.medianAge.toFixed(1),
     },
     {
-      label: 'Median household income',
+      label: 'Median income',
       value:
         demographics.medianHouseholdIncome === null
           ? null
@@ -43,24 +43,32 @@ export function DemographicsPanel({ demographics }: { demographics: Demographics
   ]
 
   return (
-    <div className="card px-6 py-7">
-      <p className="chip bg-sky-wash text-sky">{demographics.tractName}</p>
+    <div className="slab px-6 py-6">
+      <p className="tag bg-sea text-white">{demographics.tractName}</p>
 
       <dl className="mt-5 space-y-2">
         {rows.map((row) => (
           <div
             key={row.label}
-            className="flex items-center justify-between gap-4 rounded-2xl bg-cream-deep px-4 py-3"
+            className="flex items-center justify-between gap-4 rounded-xl border-[2.5px] border-ink bg-cream px-4 py-2.5"
           >
-            <dt className="text-sm text-ink-soft">{row.label}</dt>
-            <dd className="shrink-0 font-display text-xl font-semibold text-ink">
-              {row.value ?? <span className="text-sm font-normal text-ink-faint">not reported</span>}
+            <dt className="text-ink">{row.label}</dt>
+            <dd className="shrink-0 font-display text-2xl font-extrabold text-ink">
+              {row.value ?? <span className="text-base font-bold text-ink-faint">not reported</span>}
             </dd>
           </div>
         ))}
       </dl>
 
-      <p className="mt-5 text-sm leading-relaxed text-ink-soft">
+      {demographics.specialUse ? (
+        <p className="mt-4 rounded-2xl border-[3px] border-ink bg-sun px-4 py-3 leading-relaxed text-ink">
+          Heads up: this address falls in a Census special land-use tract, the kind used for parks,
+          airports and large federal sites. Almost nobody is counted as living here, so these
+          numbers describe the land rather than the neighborhood around it.
+        </p>
+      ) : null}
+
+      <p className="mt-5 leading-relaxed text-ink-soft">
         American Community Survey {demographics.vintage} 5-year estimates, for the census tract this
         address sits in. Survey based, so these are estimates with margins of error rather than a
         headcount. Anything the Census suppresses shows as not reported.

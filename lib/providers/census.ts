@@ -79,6 +79,26 @@ export interface TractInfo {
   county: string
   tract: string
   landAreaSqMi: number | null
+  /**
+   * True for a special land-use tract. See `isSpecialUseTract`.
+   */
+  specialUse: boolean
+}
+
+/**
+ * The Census Bureau reserves tract codes 9800 to 9899 for special land use:
+ * parks, airports, water, large federal or institutional property. Almost
+ * nobody is counted as living in one.
+ *
+ * This matters a lot here. 1600 Pennsylvania Avenue sits in tract 9800, which
+ * covers the National Mall and reports 17 residents across 2.52 square miles.
+ * Feeding that into a density index labels the middle of Washington DC
+ * "Suburban", which is plainly wrong. Tracts like this are flagged so the
+ * residential half of the index can be dropped rather than believed.
+ */
+export function isSpecialUseTract(tractCode: string): boolean {
+  const major = Number(tractCode.slice(0, 4))
+  return Number.isInteger(major) && major >= 9800 && major <= 9899
 }
 
 /** Resolve coordinates to their census tract, with the tract's land area. */
@@ -103,6 +123,7 @@ export async function lookupTract(center: LatLng): Promise<TractInfo | null> {
     county: tract.COUNTY,
     tract: tract.TRACT,
     landAreaSqMi: Number.isFinite(areaLand) && areaLand > 0 ? sqMetersToSqMiles(areaLand) : null,
+    specialUse: isSpecialUseTract(tract.TRACT),
   }
 }
 
@@ -186,5 +207,6 @@ export async function fetchDemographics(tract: TractInfo): Promise<Demographics>
         : null,
     landAreaSqMi: tract.landAreaSqMi,
     vintage: ACS_VINTAGE,
+    specialUse: tract.specialUse,
   }
 }

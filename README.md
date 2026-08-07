@@ -54,7 +54,7 @@ Without it everything still works; the demographics panel just reports itself
 unavailable and the Urban Index falls back to amenity density alone.
 
 ```bash
-pnpm test        # 153 unit + route tests
+pnpm test        # 173 unit and route tests
 pnpm typecheck
 pnpm lint
 pnpm build
@@ -207,6 +207,19 @@ a silently missing panel is otherwise invisible.
 - **Bird common names take the most frequently submitted English name.** Taking
   the first one gives you "Hollywood Finch" instead of "House Finch", and
   "Bicolored Blackbird" instead of "Red-winged Blackbird".
+- **One real place counts once.** OSM draws a park as many polygons plus its
+  paths, lawns and courts. A 1-mile query at the White House reported 652 parks:
+  515 were `leisure=garden`, which OSM uses for planter beds and building
+  courtyards, and the rest were fragments of a handful of real parks. Area
+  categories now merge within 200 m, tuned so DC's L'Enfant squares (Lafayette
+  at 209 m, Sherman at 264 m) stay separate while the White House putting green
+  and playground fold into President's Park. 652 becomes about 50.
+- **Census special land-use tracts are not treated as neighborhoods.** Tract
+  codes 9800 to 9899 cover parks, airports, water and federal campuses. 1600
+  Pennsylvania Avenue sits in tract 9800, which reports 17 residents across 2.52
+  square miles, and averaging that against real downtown amenity density labelled
+  the middle of Washington DC "Suburban". Those tracts now drop the residential
+  half of the index and say so. The White House reads 94, Urban Core.
 - **Map POIs are sampled evenly by distance**, not taken nearest-first. Nearest
   500 packs the dots into a disc in the middle and makes the outer half of the
   circle look empty when it is not.
@@ -255,7 +268,27 @@ iterated on together.
 - The measurement work behind the Overpass section above. The Times Square
   payload and the Swiss-mirror bug came out of benchmarking rather than guessing,
   which is the part I would not have thought to do by hand.
-- The 153 tests, several of which caught real bugs. The Gulf of Guinea
+- The 173 tests, several of which caught real bugs. The Gulf of Guinea
   coordinate bug was found by a test, not by me.
 
 I can walk through any decision in here and explain why it is the way it is.
+
+How the scores are calculated
+Walking Score, step by step:
+
+1. Fetch every mapped feature within 1 mile from OpenStreetMap.
+
+2. Whitelist into 10 categories. Tags map to groceries, transit, parks, healthcare, restaurants, schools, shopping, services, fun stuff, cafes. Anything unrecognized scores zero, which is how 977 benches get thrown out.
+
+3. Deduplicate (this is the fix I just made) so one real place counts once.
+
+4. Score each category. Take the nearest 10 and sum decay(distance) × 0.5^rank:
+
+decay is 1.0 out to a quarter mile, then slides linearly to 0 at 1 mile
+0.5^rank means the nearest counts fully, the 2nd half, the 3rd a quarter 5. Saturate. Divide by 1.75 (three close instances) and cap at 1.0. This is why 300 restaurants score identically to 3.
+
+6. Combine. Σ(saturation × weight) ÷ Σ(weight) × 100. Groceries weigh 3.0, transit 2.5, cafes 1.5.
+
+Driving is the same engine at 5 miles with reweighted categories (cafes drop to 0.3, groceries stay 3.0).
+
+On your park example: you were right, and it was two bugs. leisure=garden was counting as a park, and OSM uses that tag for every planter bed downtown — 515 of the 652. Separately, OSM draws President's Park as the park plus a putting green, playground, and basketball court. Area categories now merge within 200m, tuned so the L'Enfant squares (Lafayette at 209m, Sherman at 264m) survive while sub-features collapse. 652 → ~50, and the nearest list now reads President's Park, Lafayette Square, The Ellipse, McPherson Square. 166 tests pass.

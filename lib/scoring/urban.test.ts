@@ -57,6 +57,54 @@ describe('computeUrbanIndex', () => {
     expect(scores).toEqual([...scores].sort((a, b) => a - b))
   })
 
+  it('ignores population in a Census special land-use tract', () => {
+    // 1600 Pennsylvania Avenue sits in tract 9800, which covers the National
+    // Mall: 17 residents across 2.52 sq mi. Averaging that against real
+    // downtown amenity density labelled the middle of Washington DC "Suburban".
+    const result = computeUrbanIndex({
+      poiCount: Math.round(587 * AREA),
+      population: 17,
+      landAreaSqMi: 2.52,
+      specialUseTract: true,
+    })
+
+    expect(result.poiOnly).toBe(true)
+    expect(result.popPerSqMi).toBeNull()
+    expect(result.label).toBe('Urban Core')
+  })
+
+  it('would still catch that tract without the special-use hint', () => {
+    // Belt and braces: the implausible-density guard alone rescues it, so a
+    // mislabelled tract code cannot reintroduce the bug.
+    const result = computeUrbanIndex({
+      poiCount: Math.round(587 * AREA),
+      population: 17,
+      landAreaSqMi: 2.52,
+    })
+
+    expect(result.poiOnly).toBe(true)
+    expect(result.label).toBe('Urban Core')
+  })
+
+  it('ignores an implausibly low density surrounded by dense amenities', () => {
+    // Same protection without the tract-code hint, for tracts that are simply
+    // mostly water or industrial.
+    const result = computeUrbanIndex({
+      poiCount: Math.round(587 * AREA),
+      population: 30,
+      landAreaSqMi: 3,
+    })
+    expect(result.poiOnly).toBe(true)
+  })
+
+  it('still trusts a genuinely rural low density', () => {
+    // Sparse people AND sparse amenities is just the countryside, and the
+    // population signal there is real.
+    const result = computeUrbanIndex({ poiCount: 6, population: 1200, landAreaSqMi: 60 })
+    expect(result.poiOnly).toBe(false)
+    expect(result.label).toBe('Rural')
+  })
+
   it('falls back to amenity density alone when Census data is missing', () => {
     const result = computeUrbanIndex({
       poiCount: Math.round(190 * AREA),

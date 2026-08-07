@@ -1,18 +1,19 @@
 import type { LucideIcon } from 'lucide-react'
 import type { ReactNode } from 'react'
 
-export type Accent = 'berry' | 'leaf' | 'sky' | 'plum' | 'honey'
+export type Accent = 'berry' | 'lime' | 'sea' | 'grape' | 'sun' | 'tang'
 
 /**
  * Full class strings rather than interpolation, because Tailwind extracts
- * classes statically and would never see `bg-${accent}-wash`.
+ * classes statically and would never see `bg-${accent}`.
  */
-const ACCENT: Record<Accent, { chip: string; icon: string }> = {
-  berry: { chip: 'bg-berry-wash text-berry', icon: 'text-berry' },
-  leaf: { chip: 'bg-leaf-wash text-leaf', icon: 'text-leaf' },
-  sky: { chip: 'bg-sky-wash text-sky', icon: 'text-sky' },
-  plum: { chip: 'bg-plum-wash text-plum', icon: 'text-plum' },
-  honey: { chip: 'bg-honey-wash text-honey', icon: 'text-honey' },
+const ACCENT: Record<Accent, string> = {
+  berry: 'bg-berry shadow-[0_5px_0_var(--color-berry-deep)]',
+  lime: 'bg-lime shadow-[0_5px_0_var(--color-lime-deep)]',
+  sea: 'bg-sea shadow-[0_5px_0_var(--color-sea-deep)]',
+  grape: 'bg-grape shadow-[0_5px_0_var(--color-grape-deep)]',
+  sun: 'bg-sun shadow-[0_5px_0_var(--color-sun-deep)]',
+  tang: 'bg-tang shadow-[0_5px_0_var(--color-tang-deep)]',
 }
 
 export function FieldSection({
@@ -30,19 +31,19 @@ export function FieldSection({
   children: ReactNode
   className?: string
 }) {
-  const tone = ACCENT[accent]
-
   return (
     <section className={className}>
-      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-        <h2 className="flex items-center gap-3">
-          <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-2xl ${tone.chip}`}>
-            <Icon size={19} strokeWidth={2} aria-hidden />
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
+        <h2 className="flex items-center gap-3.5">
+          <span
+            className={`grid h-12 w-12 shrink-0 place-items-center rounded-2xl border-[3px] border-ink text-ink ${ACCENT[accent]}`}
+          >
+            <Icon size={22} strokeWidth={2.75} aria-hidden />
           </span>
-          <span className="font-display text-2xl font-semibold text-ink sm:text-[1.6rem]">{title}</span>
+          <span className="text-3xl text-ink sm:text-[2rem]">{title}</span>
         </h2>
 
-        {note ? <span className="chip bg-cream-deep text-ink-soft">{note}</span> : null}
+        {note ? <span className="tag bg-card text-ink">{note}</span> : null}
       </div>
 
       <div className="mt-5">{children}</div>
@@ -56,9 +57,9 @@ export function FieldSection({
  */
 export function Unavailable({ reason }: { reason: string }) {
   return (
-    <div className="card px-6 py-7">
-      <p className="text-base font-medium text-ink">This part did not load</p>
-      <p className="mt-2 text-sm leading-relaxed text-ink-soft">{reason}</p>
+    <div className="slab bg-cream-deep px-6 py-7">
+      <p className="font-display text-xl font-extrabold text-ink">This part did not load</p>
+      <p className="mt-1.5 leading-relaxed text-ink-soft">{reason}</p>
     </div>
   )
 }

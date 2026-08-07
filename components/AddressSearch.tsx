@@ -129,9 +129,9 @@ export function AddressSearch({ autoFocus = false }: { autoFocus?: boolean }) {
 
   return (
     <div ref={containerRef} className="relative w-full">
-      <div className="flex items-stretch gap-2 rounded-pill bg-white p-2 shadow-[0_10px_36px_-14px_rgba(20,16,12,0.55)]">
-        <span className="grid w-10 shrink-0 place-items-center text-ink-faint">
-          <Search size={18} aria-hidden />
+      <div className="flex items-stretch gap-2 rounded-pill border-[3px] border-ink bg-card p-2 shadow-[0_6px_0_var(--color-ink)]">
+        <span className="grid w-10 shrink-0 place-items-center text-ink">
+          <Search size={20} strokeWidth={2.75} aria-hidden />
         </span>
 
         <input
@@ -158,26 +158,28 @@ export function AddressSearch({ autoFocus = false }: { autoFocus?: boolean }) {
             const choice = suggestions[active] ?? suggestions[0]
             if (choice) go(choice)
           }}
-          className="inline-flex shrink-0 items-center gap-2 rounded-pill bg-berry px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-ink disabled:cursor-not-allowed disabled:bg-edge-strong disabled:text-white"
+          className="slab-press inline-flex shrink-0 items-center gap-2 rounded-pill border-[3px] border-ink bg-berry px-6 py-3 font-display text-base font-extrabold text-white shadow-[0_5px_0_var(--color-berry-deep)] disabled:cursor-not-allowed disabled:bg-ink-faint disabled:shadow-[0_5px_0_var(--color-ink-soft)]"
         >
-          {navigating ? <Loader2 size={16} className="animate-spin" aria-hidden /> : null}
-          {navigating ? 'Loading' : "Let's look"}
+          {navigating ? <Loader2 size={17} className="animate-spin" aria-hidden /> : null}
+          {navigating ? 'Loading' : "Let's go"}
         </button>
       </div>
 
-      <div className="mt-3 min-h-[1.5rem] px-2">
+      <div className="mt-3 min-h-8 px-2">
         {loading ? (
-          <p className="text-sm text-ink-faint">Looking...</p>
+          <p className="font-display font-bold text-ink-faint">Looking...</p>
         ) : nonUsOnly ? (
-          <p className="inline-flex items-start gap-2 rounded-2xl bg-honey-wash px-3.5 py-2 text-sm text-ink">
-            <Globe2 size={16} className="mt-0.5 shrink-0 text-honey" aria-hidden />
+          <p className="inline-flex items-start gap-2 rounded-2xl border-[3px] border-ink bg-sun px-4 py-2 text-sm text-ink">
+            <Globe2 size={17} strokeWidth={2.75} className="mt-0.5 shrink-0" aria-hidden />
             <span>
-              That looks like an address outside the US. Non-US addresses will be available in an
-              upcoming release.
+              That is an address outside the US. Non-US addresses will be available in an upcoming
+              release.
             </span>
           </p>
         ) : noUsMatch ? (
-          <p className="text-sm text-ink-faint">No US address matched that yet. Keep typing.</p>
+          <p className="font-display font-bold text-ink-faint">
+            No US address matched that yet. Keep typing.
+          </p>
         ) : null}
       </div>
 
@@ -185,7 +187,7 @@ export function AddressSearch({ autoFocus = false }: { autoFocus?: boolean }) {
         <ul
           id={listId}
           role="listbox"
-          className="absolute z-20 mt-1 w-full overflow-hidden rounded-3xl border border-edge bg-white p-2 shadow-[0_22px_48px_-20px_rgba(20,16,12,0.5)]"
+          className="absolute z-20 mt-1 w-full overflow-hidden rounded-3xl border-[3px] border-ink bg-card p-2 shadow-[0_6px_0_var(--color-ink)]"
         >
           {suggestions.map((suggestion, index) => (
             <li key={suggestion.id} id={`${listId}-${index}`} role="option" aria-selected={index === active}>
@@ -193,20 +195,16 @@ export function AddressSearch({ autoFocus = false }: { autoFocus?: boolean }) {
                 type="button"
                 onMouseEnter={() => setActive(index)}
                 onClick={() => go(suggestion)}
-                className={`flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left transition-colors ${
-                  index === active ? 'bg-berry-wash' : 'bg-transparent hover:bg-cream-deep'
+                className={`flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left ${
+                  index === active ? 'border-[2.5px] border-ink bg-sun' : 'border-[2.5px] border-transparent'
                 }`}
               >
-                <MapPin
-                  size={16}
-                  aria-hidden
-                  className={index === active ? 'shrink-0 text-berry' : 'shrink-0 text-ink-faint'}
-                />
+                <MapPin size={18} strokeWidth={2.75} aria-hidden className="shrink-0 text-ink" />
                 <span className="min-w-0">
-                  <span className="block truncate text-[0.95rem] font-medium text-ink">
+                  <span className="block truncate font-display font-extrabold text-ink">
                     {suggestion.primary}
                   </span>
-                  <span className="block truncate text-sm text-ink-faint">{suggestion.secondary}</span>
+                  <span className="block truncate text-sm text-ink-soft">{suggestion.secondary}</span>
                 </span>
               </button>
             </li>

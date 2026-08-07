@@ -23,9 +23,9 @@ export function SearchHistory() {
 
   if (entries.length === 0) {
     return (
-      <div className="card px-5 py-6">
-        <p className="flex items-start gap-2.5 text-sm leading-relaxed text-ink-soft">
-          <Clock3 size={16} className="mt-0.5 shrink-0 text-ink-faint" aria-hidden />
+      <div className="slab bg-cream-deep px-5 py-5">
+        <p className="flex items-start gap-2.5 leading-relaxed text-ink-soft">
+          <Clock3 size={18} strokeWidth={2.75} className="mt-0.5 shrink-0 text-ink" aria-hidden />
           Nothing yet. Addresses you look up get saved here, on this device only.
         </p>
       </div>
@@ -34,16 +34,16 @@ export function SearchHistory() {
 
   return (
     <div>
-      <ul className="space-y-2">
+      <ul className="space-y-3">
         {entries.map((entry) => (
           <li key={`${entry.lat},${entry.lng}`}>
             <Link
               href={`/info/insights/${formatCoordParam(entry)}?q=${encodeURIComponent(entry.label)}`}
-              className="card flex items-center gap-3 px-4 py-3 transition-colors hover:bg-berry-wash"
+              className="slab slab-press flex items-center gap-3 px-4 py-3"
             >
-              <MapPin size={16} className="shrink-0 text-berry" aria-hidden />
-              <span className="min-w-0 flex-1 truncate text-sm text-ink">{entry.label}</span>
-              <span className="shrink-0 text-xs text-ink-faint">
+              <MapPin size={18} strokeWidth={2.75} className="shrink-0 text-berry" aria-hidden />
+              <span className="min-w-0 flex-1 truncate text-ink">{entry.label}</span>
+              <span className="shrink-0 font-display text-xs font-extrabold text-ink-faint">
                 {new Date(entry.at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
               </span>
             </Link>
@@ -54,7 +54,7 @@ export function SearchHistory() {
       <button
         type="button"
         onClick={() => setEntries(clearHistory())}
-        className="mt-3 text-sm text-ink-faint underline decoration-edge-strong underline-offset-4 transition-colors hover:text-berry"
+        className="mt-4 font-display font-bold text-ink-faint underline decoration-2 underline-offset-4 transition-colors hover:text-berry"
       >
         Clear history
       </button>

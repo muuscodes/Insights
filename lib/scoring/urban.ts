@@ -51,21 +51,47 @@ export interface UrbanIndexInput {
   population: number | null
   /** Tract land area in square miles, from TIGER `AREALAND`. */
   landAreaSqMi: number | null
+  /**
+   * True when the tract is Census special land use (codes 9800 to 9899): a
+   * park, an airport, water, a big federal campus. Its population is close to
+   * zero by definition and says nothing about the surrounding neighbourhood.
+   */
+  specialUseTract?: boolean
 }
+
+/**
+ * Below this, a tract's residents-per-square-mile is treated as an artefact
+ * rather than a description of the place. 1600 Pennsylvania Avenue sits in a
+ * tract reporting 7 residents per square mile; averaging that against genuine
+ * downtown amenity density produced "Suburban" for the middle of Washington DC.
+ */
+const IMPLAUSIBLE_POP_DENSITY = 50
 
 export function computeUrbanIndex({
   poiCount,
   population,
   landAreaSqMi,
+  specialUseTract = false,
 }: UrbanIndexInput): UrbanIndex {
   const areaSqMi = circleAreaSqMi(WALK_RADIUS_MI)
   const poiPerSqMi = poiCount / areaSqMi
   const poiScore = normalizeLog(poiPerSqMi, POI_PER_SQ_MI_MIN, POI_PER_SQ_MI_MAX)
 
-  const hasPop =
-    population !== null && landAreaSqMi !== null && population > 0 && landAreaSqMi > 0
+  const rawDensity =
+    population !== null && landAreaSqMi !== null && landAreaSqMi > 0
+      ? population / landAreaSqMi
+      : null
 
-  const popPerSqMi = hasPop ? population / landAreaSqMi : null
+  // Drop the residential signal when it cannot be believed: a special-use tract,
+  // or a density so low it contradicts an obviously built-up surrounding.
+  const populationUsable =
+    rawDensity !== null &&
+    population !== null &&
+    population > 0 &&
+    !specialUseTract &&
+    !(rawDensity < IMPLAUSIBLE_POP_DENSITY && poiPerSqMi > POI_PER_SQ_MI_MIN * 4)
+
+  const popPerSqMi = populationUsable ? rawDensity : null
 
   // With no Census input, fall back to amenity density alone and say so, rather
   // than silently reporting a number built from half the evidence.

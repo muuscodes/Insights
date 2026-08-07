@@ -123,6 +123,7 @@ export async function buildInsights(center: LatLng, providedLabel?: string): Pro
           // Prefer the tract land area even when ACS itself failed, since the
           // geocoder hands it back independently.
           landAreaSqMi: demographics?.landAreaSqMi ?? tract?.landAreaSqMi ?? null,
+          specialUseTract: tract?.specialUse ?? false,
         }),
       )
     : panelFailed(null, 'Needs amenity data, which is temporarily unavailable.', 'urban')

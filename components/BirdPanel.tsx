@@ -5,8 +5,8 @@ const numberFormat = new Intl.NumberFormat('en-US')
 export function BirdPanel({ birds }: { birds: Bird[] }) {
   if (birds.length === 0) {
     return (
-      <div className="card px-6 py-7">
-        <p className="text-sm leading-relaxed text-ink-soft">
+      <div className="slab px-6 py-6">
+        <p className="leading-relaxed text-ink-soft">
           No bird sightings logged within a mile in the last ten years. Either nobody around here
           submits records, or it really is that quiet.
         </p>
@@ -17,21 +17,31 @@ export function BirdPanel({ birds }: { birds: Bird[] }) {
   const most = birds[0]?.observations ?? 1
 
   return (
-    <div className="card px-6 py-7">
+    <div className="slab px-6 py-6">
       <ol className="grid gap-3 sm:grid-cols-2">
-        {birds.map((bird) => (
-          <li key={bird.speciesKey} className="rounded-2xl bg-cream-deep px-4 py-3.5">
+        {birds.map((bird, index) => (
+          <li
+            key={bird.speciesKey}
+            className="rounded-2xl border-[3px] border-ink bg-cream px-4 py-3"
+          >
             <div className="flex items-baseline justify-between gap-3">
-              <span className="truncate font-medium text-ink">{bird.commonName}</span>
-              <span className="shrink-0 text-sm text-ink-soft">
+              <span className="flex min-w-0 items-baseline gap-2">
+                <span className="font-display text-sm font-extrabold text-ink-faint">
+                  {index + 1}
+                </span>
+                <span className="truncate font-display text-lg font-extrabold text-ink">
+                  {bird.commonName}
+                </span>
+              </span>
+              <span className="shrink-0 font-display text-sm font-extrabold text-ink-soft">
                 {numberFormat.format(bird.observations)}
               </span>
             </div>
 
-            <div className="mt-2 h-1.5 w-full overflow-hidden rounded-pill bg-white">
+            <div className="mt-2 h-3 w-full overflow-hidden rounded-pill border-2 border-ink bg-card">
               <div
-                className="sweep h-full rounded-pill bg-leaf"
-                style={{ width: `${Math.max(4, (bird.observations / most) * 100)}%` }}
+                className="fill h-full bg-lime"
+                style={{ width: `${Math.max(6, (bird.observations / most) * 100)}%` }}
               />
             </div>
 
@@ -40,7 +50,7 @@ export function BirdPanel({ birds }: { birds: Bird[] }) {
         ))}
       </ol>
 
-      <p className="mt-5 text-sm leading-relaxed text-ink-soft">
+      <p className="mt-5 leading-relaxed text-ink-soft">
         The most-recorded species within a mile over the last ten years. Counts come from how often
         people submitted a sighting, so they track birdwatcher enthusiasm as much as bird numbers.
       </p>

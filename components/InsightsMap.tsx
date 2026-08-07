@@ -101,14 +101,14 @@ export function InsightsMap({
             id: 'radius-fill',
             type: 'fill',
             source: 'radius',
-            paint: { 'fill-color': '#e05a47', 'fill-opacity': 0.07 },
+            paint: { 'fill-color': '#ff5d8f', 'fill-opacity': 0.09 },
           })
 
           map.addLayer({
             id: 'radius-line',
             type: 'line',
             source: 'radius',
-            paint: { 'line-color': '#e05a47', 'line-width': 2, 'line-dasharray': [2, 2] },
+            paint: { 'line-color': '#241d18', 'line-width': 3, 'line-dasharray': [2, 1.6] },
           })
 
           map.addSource('pois', {
@@ -130,17 +130,17 @@ export function InsightsMap({
             type: 'circle',
             source: 'pois',
             paint: {
-              'circle-radius': ['interpolate', ['linear'], ['zoom'], 11, 3, 15, 6],
+              'circle-radius': ['interpolate', ['linear'], ['zoom'], 11, 3.5, 15, 7],
               'circle-color': CIRCLE_COLOR,
-              'circle-stroke-width': 1.5,
-              'circle-stroke-color': '#ffffff',
-              'circle-opacity': 0.95,
+              'circle-stroke-width': 1.75,
+              'circle-stroke-color': '#241d18',
+              'circle-opacity': 1,
             },
           })
 
           const marker = document.createElement('div')
           marker.style.cssText =
-            'width:18px;height:18px;border-radius:9999px;background:#2b2724;border:3px solid #ffffff;box-shadow:0 3px 10px rgba(20,16,12,.45)'
+            'width:22px;height:22px;border-radius:9999px;background:#ff5d8f;border:4px solid #241d18;box-shadow:0 3px 0 #241d18'
 
           new maplibregl.Marker({ element: marker })
             .setLngLat([lng, lat])
@@ -179,10 +179,10 @@ export function InsightsMap({
 
   return (
     <div>
-      <div className="relative overflow-hidden rounded-3xl border border-edge bg-cream-deep">
+      <div className="relative overflow-hidden rounded-3xl border-[3px] border-ink bg-cream-deep shadow-[0_6px_0_var(--color-ink)]">
         <div ref={containerRef} className="h-[26rem] w-full sm:h-[32rem]" />
         {failed ? (
-          <p className="absolute inset-0 flex items-center justify-center bg-cream-deep px-6 text-center text-sm text-ink-soft">
+          <p className="absolute inset-0 flex items-center justify-center bg-cream-deep px-6 text-center text-ink-soft">
             The map could not load. Every score on this page is unaffected.
           </p>
         ) : null}
@@ -190,10 +190,10 @@ export function InsightsMap({
 
       <ul className="mt-4 flex flex-wrap gap-2">
         {CATEGORIES.map((category) => (
-          <li key={category.key} className="chip bg-cream-deep text-ink-soft">
+          <li key={category.key} className="tag bg-card text-ink">
             <span
               aria-hidden
-              className="inline-block h-2.5 w-2.5 rounded-full"
+              className="inline-block h-3 w-3 rounded-full border-2 border-ink"
               style={{ backgroundColor: category.color }}
             />
             {category.label}

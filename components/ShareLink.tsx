@@ -52,14 +52,16 @@ export function ShareLink() {
         type="button"
         onClick={share}
         disabled={state === 'working'}
-        className="inline-flex items-center gap-2 rounded-pill bg-ink px-5 py-2.5 text-sm font-medium text-cream transition-colors hover:bg-berry disabled:opacity-70"
+        className={`slab-press inline-flex items-center gap-2 rounded-pill border-[3px] border-ink px-5 py-2.5 font-display font-extrabold text-ink shadow-[0_5px_0_var(--color-ink)] disabled:opacity-80 ${
+          state === 'copied' ? 'bg-lime' : 'bg-sun'
+        }`}
       >
         {state === 'working' ? (
-          <Loader2 size={16} className="animate-spin" aria-hidden />
+          <Loader2 size={17} strokeWidth={2.75} className="animate-spin" aria-hidden />
         ) : state === 'copied' ? (
-          <Check size={16} aria-hidden />
+          <Check size={17} strokeWidth={3} aria-hidden />
         ) : (
-          <Link2 size={16} aria-hidden />
+          <Link2 size={17} strokeWidth={2.75} aria-hidden />
         )}
         {state === 'copied' ? 'Copied' : state === 'working' ? 'Making a link' : 'Share this'}
       </button>

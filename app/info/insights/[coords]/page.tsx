@@ -106,24 +106,24 @@ async function InsightsReport({ center, label }: { center: LatLng; label?: strin
 
   return (
     <main className="mx-auto w-full max-w-6xl px-6 pb-24 pt-10 sm:px-10">
-      <header className="rise">
+      <header className="pop">
         <Link
           href="/info"
-          className="inline-flex items-center gap-1.5 text-sm text-ink-faint transition-colors hover:text-berry"
+          className="inline-flex items-center gap-1.5 rounded-pill border-[3px] border-ink bg-card px-4 py-1.5 font-display font-extrabold text-ink shadow-[0_4px_0_var(--color-ink)] slab-press"
         >
-          <ArrowLeft size={15} aria-hidden />
+          <ArrowLeft size={16} strokeWidth={3} aria-hidden />
           New search
         </Link>
 
-        <div className="mt-5 flex flex-wrap items-end justify-between gap-x-8 gap-y-5">
+        <div className="mt-6 flex flex-wrap items-end justify-between gap-x-8 gap-y-5">
           <div className="min-w-0">
-            <h1 className="max-w-3xl font-display text-[clamp(2rem,5vw,3.25rem)] font-semibold leading-[1.05] text-ink">
+            <h1 className="max-w-3xl text-[clamp(2rem,5.5vw,3.5rem)] leading-[1.03] text-ink">
               {address.formatted}
             </h1>
             <p className="mt-3 flex flex-wrap items-center gap-2">
-              <span className="chip bg-cream-deep text-ink-soft">{formatCoordParam(address)}</span>
+              <span className="tag bg-card text-ink">{formatCoordParam(address)}</span>
               {address.tractGeoid ? (
-                <span className="chip bg-cream-deep text-ink-soft">Tract {address.tractGeoid}</span>
+                <span className="tag bg-card text-ink">Tract {address.tractGeoid}</span>
               ) : null}
             </p>
           </div>
@@ -132,7 +132,7 @@ async function InsightsReport({ center, label }: { center: LatLng; label?: strin
         </div>
       </header>
 
-      <div className="rise mt-12" style={{ animationDelay: '80ms' }}>
+      <div className="pop mt-14" style={{ animationDelay: '80ms' }}>
         <FieldSection
           title="The mile around you"
           icon={MapIcon}
@@ -148,8 +148,8 @@ async function InsightsReport({ center, label }: { center: LatLng; label?: strin
         </FieldSection>
       </div>
 
-      <div className="rise mt-16" style={{ animationDelay: '140ms' }}>
-        <FieldSection title="Getting around" icon={Route} accent="leaf" note="OpenStreetMap">
+      <div className="pop mt-16" style={{ animationDelay: '140ms' }}>
+        <FieldSection title="Getting around" icon={Route} accent="lime" note="OpenStreetMap">
           <div className="grid gap-6 md:grid-cols-2">
             {insights.walk.ok ? (
               <ScoreMeter kind="Walking" result={insights.walk.data} showWalkTimes />
@@ -165,11 +165,11 @@ async function InsightsReport({ center, label }: { center: LatLng; label?: strin
         </FieldSection>
       </div>
 
-      <div className="rise mt-16" style={{ animationDelay: '200ms' }}>
+      <div className="pop mt-16" style={{ animationDelay: '200ms' }}>
         <FieldSection
           title="How built up is it"
           icon={Building2}
-          accent="plum"
+          accent="grape"
           note="Map data + Census"
         >
           {insights.urban.ok ? (
@@ -180,8 +180,8 @@ async function InsightsReport({ center, label }: { center: LatLng; label?: strin
         </FieldSection>
       </div>
 
-      <div className="rise mt-16 grid gap-x-10 gap-y-16 lg:grid-cols-2" style={{ animationDelay: '260ms' }}>
-        <FieldSection title="Who lives here" icon={Users} accent="sky" note="Census, 5-year">
+      <div className="pop mt-16 grid gap-x-10 gap-y-16 lg:grid-cols-2" style={{ animationDelay: '260ms' }}>
+        <FieldSection title="Who lives here" icon={Users} accent="sea" note="Census, 5-year">
           {insights.demographics.ok ? (
             <DemographicsPanel demographics={insights.demographics.data} />
           ) : (
@@ -189,7 +189,7 @@ async function InsightsReport({ center, label }: { center: LatLng; label?: strin
           )}
         </FieldSection>
 
-        <FieldSection title="What it smells like" icon={Wind} accent="honey" note="Half-mile radius">
+        <FieldSection title="What it smells like" icon={Wind} accent="sun" note="Half-mile radius">
           {insights.scent.ok ? (
             <ScentPanel scent={insights.scent.data} />
           ) : (
@@ -198,8 +198,8 @@ async function InsightsReport({ center, label }: { center: LatLng; label?: strin
         </FieldSection>
       </div>
 
-      <div className="rise mt-16" style={{ animationDelay: '320ms' }}>
-        <FieldSection title="Who else lives here" icon={BirdIcon} accent="leaf" note="Bird sightings">
+      <div className="pop mt-16" style={{ animationDelay: '320ms' }}>
+        <FieldSection title="Who else lives here" icon={BirdIcon} accent="lime" note="Bird sightings">
           {insights.birds.ok ? (
             <BirdPanel birds={insights.birds.data} />
           ) : (
@@ -208,7 +208,7 @@ async function InsightsReport({ center, label }: { center: LatLng; label?: strin
         </FieldSection>
       </div>
 
-      <footer className="mt-20 border-t border-edge pt-6">
+      <footer className="mt-20 rounded-3xl border-[3px] border-ink bg-cream-deep px-6 py-5">
         <p className="max-w-2xl text-sm leading-relaxed text-ink-soft">
           These scores are simple heuristics over open data, not official indices. How much shows up
           depends on how thoroughly OpenStreetMap volunteers have mapped the area, which varies a

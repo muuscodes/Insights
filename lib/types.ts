@@ -84,6 +84,12 @@ export interface Demographics {
   /** Land area of the tract in square miles, from TIGER `AREALAND`. */
   landAreaSqMi: number | null
   vintage: number
+  /**
+   * True for a Census special land-use tract (codes 9800 to 9899): parks,
+   * airports, water, large federal campuses. Almost nobody is counted as
+   * living in one, so these figures describe the land, not a neighbourhood.
+   */
+  specialUse: boolean
 }
 
 export interface Bird {
