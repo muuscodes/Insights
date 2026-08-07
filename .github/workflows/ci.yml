@@ -18,9 +18,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # No `version` input on purpose. package.json already carries a
+      # `packageManager` field, and passing both makes this action fail with
+      # "multiple versions of pnpm specified", which leaves pnpm off the PATH
+      # and every later step reporting "pnpm: command not found".
       - uses: pnpm/action-setup@v4
-        with:
-          version: 10
 
       - uses: actions/setup-node@v4
         with:
@@ -30,28 +32,31 @@ jobs:
       # Frozen so a lockfile that drifted from package.json fails loudly here
       # rather than resolving to something different than anyone ran locally.
       - name: Install
+        id: install
         run: pnpm install --frozen-lockfile
 
-      # Each step runs even if an earlier one failed, so one push surfaces every
-      # problem instead of one per re-run.
+      # The checks below run even after an earlier one fails, so a single push
+      # surfaces every problem instead of one per re-run. They are still gated
+      # on install succeeding: if there are no dependencies, running all five is
+      # just the same error five times.
       - name: Format
-        if: '!cancelled()'
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: pnpm format:check
 
       - name: Lint
-        if: '!cancelled()'
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: pnpm lint
 
       - name: Typecheck
-        if: '!cancelled()'
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: pnpm typecheck
 
       - name: Tests
-        if: '!cancelled()'
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: pnpm test
 
       # Catches anything only a real production build surfaces. No API key is
       # provided on purpose: the app has to build and boot without one.
       - name: Build
-        if: '!cancelled()'
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: pnpm build
