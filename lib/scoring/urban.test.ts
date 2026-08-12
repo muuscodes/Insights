@@ -25,16 +25,47 @@ describe('computeUrbanIndex', () => {
     expect(result.label).toBe('Suburban')
   })
 
-  it('reads a dense inner-city neighbourhood as Urban Core', () => {
-    // Calibrated against the San Francisco Mission probe: roughly 190 POIs per
-    // square mile and a tract population density near 30,000 per square mile.
+  it('reads a moderately built-up neighbourhood as Urban', () => {
+    // Dense residential, moderate amenities. Urban, but not a core.
     const result = computeUrbanIndex({
       poiCount: Math.round(190 * AREA),
       population: 6000,
       landAreaSqMi: 0.2,
     })
+    expect(result.label).toBe('Urban')
+  })
+
+  it('reads a dense inner-city neighbourhood as Urban Core, with headroom left', () => {
+    // Measured, not invented: a live San Francisco address returned 854
+    // amenities and 35,817 residents per square mile. Under the old 800/30,000
+    // ceilings it cleared both and pinned at exactly 100, leaving nothing to
+    // separate it from somewhere genuinely denser.
+    const result = computeUrbanIndex({
+      poiCount: Math.round(854 * AREA),
+      population: 35_817,
+      landAreaSqMi: 1,
+    })
     expect(result.label).toBe('Urban Core')
     expect(result.index).toBeGreaterThan(75)
+    expect(result.index).toBeLessThan(100)
+  })
+
+  it('still ranks somewhere genuinely denser above that', () => {
+    // Manhattan tracts run past 70,000 residents per square mile. The point of
+    // the raised ceiling is that this has to outrank the address above.
+    const sanFrancisco = computeUrbanIndex({
+      poiCount: Math.round(854 * AREA),
+      population: 35_817,
+      landAreaSqMi: 1,
+    })
+    const manhattan = computeUrbanIndex({
+      poiCount: Math.round(1_500 * AREA),
+      population: 70_000,
+      landAreaSqMi: 1,
+    })
+
+    expect(manhattan.index).toBeGreaterThan(sanFrancisco.index)
+    expect(manhattan.index).toBeLessThanOrEqual(100)
   })
 
   it('increases monotonically with amenity density', () => {

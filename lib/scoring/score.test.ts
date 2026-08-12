@@ -167,6 +167,53 @@ describe('scoreMode', () => {
   })
 })
 
+describe('proximity tiebreaker above saturation', () => {
+  const TEN_CATEGORIES: Record<string, string>[] = [
+    { shop: 'supermarket' },
+    { amenity: 'restaurant' },
+    { amenity: 'cafe' },
+    { shop: 'clothes' },
+    { amenity: 'bank' },
+    { amenity: 'school' },
+    { leisure: 'park' },
+    { amenity: 'pharmacy' },
+    { highway: 'bus_stop' },
+    { amenity: 'bar' },
+  ]
+
+  /** Every category saturated, with the nearest instance at `nearestM`. */
+  const saturatedAt = (nearestM: number) =>
+    TEN_CATEGORIES.flatMap((tags) => Array.from({ length: 10 }, () => poi(tags, nearestM)))
+
+  it('separates two addresses that both saturate every category', () => {
+    // Before this existed both of these scored exactly 100, which made a
+    // measured San Francisco address indistinguishable from Midtown Manhattan.
+    const doorstep = scoreMode(saturatedAt(20), 'walk').score
+    const edgeOfFullCredit = scoreMode(saturatedAt(400), 'walk').score
+
+    expect(doorstep).toBeGreaterThan(edgeOfFullCredit)
+  })
+
+  it('leaves headroom rather than pinning good addresses at 100', () => {
+    // 400m is still inside the quarter-mile full-credit zone, so decay alone
+    // treats it as perfect. It should read as very good, not flawless.
+    const score = scoreMode(saturatedAt(400), 'walk').score
+    expect(score).toBeGreaterThanOrEqual(85)
+    expect(score).toBeLessThan(100)
+  })
+
+  it('still reaches 100 when everything really is at the doorstep', () => {
+    expect(scoreMode(saturatedAt(5), 'walk').score).toBe(100)
+  })
+
+  it('does not let proximity rescue a category that is not served', () => {
+    // One grocery at the doorstep is still one grocery, not a full category.
+    const single = scoreMode([poi({ shop: 'supermarket' }, 1)], 'walk')
+    const grocery = single.breakdown.find((row) => row.key === 'grocery')
+    expect(grocery?.saturation).toBeLessThan(1)
+  })
+})
+
 describe('scoreBand', () => {
   it('covers every score from 0 to 100', () => {
     for (let score = 0; score <= 100; score++) {
