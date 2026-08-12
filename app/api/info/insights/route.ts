@@ -12,6 +12,9 @@ import { coordParamsSchema, labelSchema } from '@/lib/schemas'
  * and so the scoring can be exercised without scraping HTML.
  */
 
+/** Matches the report page: a cold build can legitimately take ~30s. */
+export const maxDuration = 60
+
 /** Each call can fan out to several upstream providers, so keep this tight. */
 const LIMIT = 15
 const WINDOW_MS = 60_000

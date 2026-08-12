@@ -1,5 +1,7 @@
 import 'server-only'
 
+import { unstable_cache } from 'next/cache'
+
 import { formatCoordParam, type LatLng } from './geo'
 import { fetchBirds } from './providers/gbif'
 import { fetchDemographics, lookupTract, type TractInfo } from './providers/census'
@@ -16,9 +18,15 @@ import type { Bird, Demographics, InsightsPayload, MapPoi, Panel, Poi } from './
  * Providers are independent, so one going down degrades a single panel instead
  * of the page. Every panel is a discriminated union carrying either data or a
  * reason, and the UI renders the reason rather than an empty box.
+ *
+ * The whole assembled payload is cached; see `buildInsightsForCoords` at the
+ * bottom of this file for why that happens here rather than per-fetch.
  */
 
-/** Keep the client payload bounded on dense addresses. */
+/**
+ * Keep the client payload bounded on dense addresses. Also keeps the cached
+ * entry far inside Next's 2 MB per-item ceiling.
+ */
 const MAX_MAP_POIS = 600
 
 /**
@@ -60,10 +68,7 @@ function panelFailed(error: unknown, fallback: string, panel: string): Panel<nev
   return { ok: false, reason: fallback }
 }
 
-export async function buildInsights(
-  center: LatLng,
-  providedLabel?: string,
-): Promise<InsightsPayload> {
+async function assemble(center: LatLng): Promise<InsightsPayload> {
   const poisPromise = fetchPois(center)
   const birdsPromise = fetchBirds(center)
   const tractPromise = lookupTract(center)
@@ -77,9 +82,10 @@ export async function buildInsights(
   })
   demographicsPromise.catch(() => undefined)
 
-  const labelPromise: Promise<string | null> = providedLabel
-    ? Promise.resolve(providedLabel)
-    : reverseLabel(center)
+  // Always resolved server-side rather than taken from `?q=`, so one cache entry
+  // serves a link shared with or without that parameter. The caller re-applies
+  // the caller-supplied label afterwards, outside the cache.
+  const labelPromise: Promise<string | null> = reverseLabel(center)
 
   const [poisResult, birdsResult, tractResult, demographicsResult, labelResult] =
     await Promise.allSettled([
@@ -185,4 +191,59 @@ export async function buildInsights(
     mapPois,
     generatedAt: new Date().toISOString(),
   }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Caching                                                                    */
+/* -------------------------------------------------------------------------- */
+
+const CACHE_TTL_SECONDS = 60 * 60 * 24
+
+/**
+ * Cache the finished payload rather than the upstream responses.
+ *
+ * The per-fetch cache on the Overpass call looked like it covered this, but it
+ * silently never engaged in the places that matter. Next's data cache refuses
+ * any entry over 2 MB, and a 1-mile query over a dense address comes back at
+ * roughly 2.4 MB:
+ *
+ *   Failed to set Next.js data cache for https://overpass-api.de/api/interpreter,
+ *   items over 2MB can not be cached (2418244 bytes)
+ *
+ * So every request re-ran two Overpass queries, which got us throttled, which
+ * made the next request slower still. Measured on one address, three requests
+ * in a row: 6.5s, 3.9s, then 61.6s with both score panels degraded. A sparse
+ * rural address, whose response does fit, went 31.9s then 0.76s then 0.25s.
+ *
+ * The assembled payload is about 88 KB, comfortably inside the limit, and it
+ * subsumes the Census, GBIF and Photon calls as well. Cities now behave the way
+ * rural addresses already did: expensive once, then instant.
+ */
+export function buildInsightsForCoords(center: LatLng): Promise<InsightsPayload> {
+  // Keyed on the canonical 6-decimal form, which is exactly what the URL
+  // carries, so the same shared link always lands on the same entry. Rounding
+  // coarser to pool neighbouring lookups was tempting but wrong: 4 decimals is
+  // ~11 m, and two genuinely different street addresses fit inside that.
+  const key = formatCoordParam(center)
+
+  return unstable_cache(() => assemble(center), ['insights', key], {
+    revalidate: CACHE_TTL_SECONDS,
+    tags: ['insights'],
+  })()
+}
+
+/**
+ * Assemble everything for one address, reusing a cached report when there is
+ * one. `providedLabel` is display text from `?q=` and is applied on top of the
+ * cached payload, never baked into it.
+ */
+export async function buildInsights(
+  center: LatLng,
+  providedLabel?: string,
+): Promise<InsightsPayload> {
+  const payload = await buildInsightsForCoords(center)
+
+  if (!providedLabel) return payload
+
+  return { ...payload, address: { ...payload.address, formatted: providedLabel } }
 }

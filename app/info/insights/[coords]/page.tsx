@@ -31,6 +31,15 @@ import { labelSchema } from '@/lib/schemas'
   no database, no session and no link that can expire.
 */
 
+/**
+ * A cold report runs two sequential Overpass queries, each of which walks a
+ * mirror list at up to 25s per attempt. Measured worst case on a sparse address
+ * was 31.9s, and a throttled dense one hit 61.6s. The platform default is well
+ * under that, so a first look would be killed mid-flight rather than served.
+ * Warm requests come off the cache in well under a second.
+ */
+export const maxDuration = 60
+
 interface PageProps {
   params: Promise<{ coords: string }>
   searchParams: Promise<Record<string, string | string[] | undefined>>
