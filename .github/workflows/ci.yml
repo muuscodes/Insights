@@ -51,9 +51,11 @@ jobs:
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: pnpm typecheck
 
+      # Coverage rather than a bare run, so the thresholds in vitest.config.ts
+      # are enforced here rather than being a number someone checks by hand.
       - name: Tests
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
-        run: pnpm test
+        run: pnpm test:coverage
 
       # Catches anything only a real production build surfaces. No API key is
       # provided on purpose: the app has to build and boot without one.

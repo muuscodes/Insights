@@ -8,7 +8,9 @@ const __dirname = dirname(__filename)
 const compat = new FlatCompat({ baseDirectory: __dirname })
 
 const config = [
-  { ignores: ['.next/**', 'node_modules/**', 'next-env.d.ts'] },
+  // `coverage/` is generated, and its bundled HTML report trips rules that
+  // only make sense for source we actually wrote.
+  { ignores: ['.next/**', 'node_modules/**', 'next-env.d.ts', 'coverage/**'] },
   ...compat.extends('next/core-web-vitals', 'next/typescript'),
 ]
 
