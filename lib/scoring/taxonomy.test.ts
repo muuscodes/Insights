@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest'
 
 import { NOISE_FEATURES } from '@/test/fixtures'
+import { SCENT_TAG_KEYS, computeScentProfile } from './scent'
+import type { TaggedFeature } from '@/lib/types'
 import {
   CATEGORIES,
   CLASSIFIED_TAGS,
+  CLASSIFY_TAG_KEYS,
   NEAR_QUERY_FILTERS,
   OVERPASS_MIRRORS,
   WIDE_FILTERS,
@@ -125,5 +128,76 @@ describe('filter tables', () => {
   it('gives every category a distinct colour so the map legend is readable', () => {
     const colors = new Set(CATEGORIES.map((c) => c.color))
     expect(colors.size).toBe(CATEGORIES.length)
+  })
+
+  /*
+    The Overpass layer strips every tag key outside CLASSIFY_TAG_KEYS and
+    SCENT_TAG_KEYS before a feature is retained, which is what keeps the cached
+    payload small. If a rule or a scent matcher starts reading a key that is not
+    declared, it is stripped before it ever arrives and the feature silently
+    stops matching. These two guard that.
+  */
+  describe('retains every tag classify and scent read', () => {
+    it('declares every tag the classification rules match on', () => {
+      for (const tag of CLASSIFIED_TAGS) {
+        expect(CLASSIFY_TAG_KEYS, tag).toContain(tag)
+      }
+    })
+
+    it('survives a trim to the declared keys', () => {
+      const retained = new Set([...CLASSIFY_TAG_KEYS, ...SCENT_TAG_KEYS])
+      const trim = (tags: Record<string, string>): Record<string, string> =>
+        Object.fromEntries(Object.entries(tags).filter(([key]) => retained.has(key)))
+
+      // Realistic noise: the keys OSM features actually carry alongside the
+      // handful we care about.
+      const noise = {
+        name: 'Somewhere',
+        'name:es': 'Algun sitio',
+        opening_hours: 'Mo-Su 08:00-22:00',
+        wheelchair: 'yes',
+        'addr:housenumber': '123',
+        phone: '+1-555-0100',
+      }
+
+      const samples: Record<string, string>[] = [
+        { amenity: 'restaurant', cuisine: 'mexican' },
+        { amenity: 'cafe' },
+        { shop: 'supermarket' },
+        { shop: 'vacant' },
+        { amenity: 'pharmacy' },
+        { leisure: 'park' },
+        { landuse: 'landfill' },
+        { natural: 'water' },
+        { man_made: 'wastewater_plant' },
+        { craft: 'brewery' },
+        { railway: 'station' },
+        { highway: 'bus_stop' },
+        { tourism: 'museum' },
+        { amenity: 'restaurant', disused: 'yes' },
+        { 'disused:shop': 'bakery' },
+      ]
+
+      for (const tags of samples) {
+        const full = { ...tags, ...noise }
+        expect(classify(trim(full)), JSON.stringify(tags)).toBe(classify(full))
+      }
+
+      const asFeatures = (build: (t: Record<string, string>) => Record<string, string>) =>
+        samples.map(
+          (tags, index): TaggedFeature => ({
+            id: `node/${index}`,
+            name: null,
+            lat: 37.76,
+            lng: -122.41,
+            distanceM: 100,
+            tags: build({ ...tags, ...noise }),
+          }),
+        )
+
+      expect(computeScentProfile(asFeatures(trim))).toEqual(
+        computeScentProfile(asFeatures((t) => t)),
+      )
+    })
   })
 })

@@ -3,7 +3,9 @@ import 'server-only'
 import { DRIVE_RADIUS_M, WALK_RADIUS_M, haversineMeters, type LatLng } from '../geo'
 import { UpstreamError, fetchJson, firstSuccessful } from '../http'
 import { dedupePois } from '../scoring/dedupe'
+import { SCENT_TAG_KEYS } from '../scoring/scent'
 import {
+  CLASSIFY_TAG_KEYS,
   NEAR_QUERY_FILTERS,
   OVERPASS_MIRRORS,
   WIDE_FILTERS,
@@ -150,6 +152,26 @@ async function runQuery(query: string): Promise<OverpassElement[]> {
   }
 }
 
+/**
+ * Tag keys worth keeping past this boundary.
+ *
+ * `out center tags` hands back every tag on every feature, and OSM features
+ * carry a lot of them: opening hours, wheelchair access, phone numbers, address
+ * components, half a dozen `name:<lang>` variants. Two consumers read raw tags
+ * and between them they touch fifteen keys, so everything else is dead weight
+ * that we would otherwise hold in memory and write into the cache entry.
+ */
+const RETAINED_TAG_KEYS: ReadonlySet<string> = new Set([...CLASSIFY_TAG_KEYS, ...SCENT_TAG_KEYS])
+
+function retainedTags(tags: Record<string, string>): Record<string, string> {
+  const kept: Record<string, string> = {}
+  for (const key of Object.keys(tags)) {
+    const value = tags[key]
+    if (value !== undefined && RETAINED_TAG_KEYS.has(key)) kept[key] = value
+  }
+  return kept
+}
+
 function toFeature(element: OverpassElement, center: LatLng): TaggedFeature | null {
   // Nodes carry lat/lon directly; ways and relations come back with a bounding
   // box centre because the query asks for `out center`.
@@ -161,11 +183,13 @@ function toFeature(element: OverpassElement, center: LatLng): TaggedFeature | nu
 
   return {
     id: `${element.type}/${element.id}`,
+    // Read before the trim, since `name` is promoted to its own field and is
+    // not one of the keys worth carrying around as a tag.
     name: tags.name ?? null,
     lat,
     lng,
     distanceM: haversineMeters(center, { lat, lng }),
-    tags,
+    tags: retainedTags(tags),
   }
 }
 

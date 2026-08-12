@@ -117,6 +117,25 @@ const NOTES: readonly NoteDef[] = [
   },
 ]
 
+/**
+ * Every tag key the matchers above read, plus `cuisine` for the detail string.
+ *
+ * The scent profile is the only consumer that needs tags no scoring category
+ * cares about (landfill, industrial land, tree cover), so it has to declare
+ * them or the Overpass layer will strip them before they arrive.
+ */
+export const SCENT_TAG_KEYS: readonly string[] = [
+  'amenity',
+  'craft',
+  'cuisine',
+  'landuse',
+  'leisure',
+  'man_made',
+  'microbrewery',
+  'natural',
+  'shop',
+]
+
 /** Human-friendly cuisine names for the ones that actually turn up. */
 const CUISINE_LABELS: Record<string, string> = {
   coffee_shop: 'coffee',

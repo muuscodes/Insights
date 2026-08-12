@@ -12,7 +12,10 @@ export interface TaggedFeature {
   lng: number
   /** Straight-line distance from the searched address, in metres. */
   distanceM: number
-  /** Raw OSM tags, retained so the scent profile can re-read cuisine values. */
+  /**
+   * OSM tags, trimmed at the provider boundary to the keys `classify` and the
+   * scent profile actually read. Not the full tag set the API returned.
+   */
   tags: Record<string, string>
 }
 
