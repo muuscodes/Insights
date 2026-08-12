@@ -217,6 +217,42 @@ describe('fetchPois', () => {
     expect(feature?.tags).toEqual({ shop: 'supermarket' })
   })
 
+  it('skips the wide pass when the near pass has eaten the budget', async () => {
+    // Per-request timeouts alone do not bound this: three mirrors at 25s each,
+    // twice over, is 150s. A cold rural address measured 67.4s, past the 60s
+    // function ceiling, because sparse areas widen for nearly every category.
+    const queries: string[] = []
+    let clock = 1_000_000
+    vi.spyOn(Date, 'now').mockImplementation(() => clock)
+
+    mockOverpass((_url, query) => {
+      queries.push(query)
+      // The near pass burns 44 of the 45 second budget.
+      clock += 44_000
+      return ok([node(1, { shop: 'supermarket' }, 50)])
+    })
+
+    const result = await fetchPois(CENTER)
+
+    expect(queries).toHaveLength(1)
+    expect(result.drivePois).toEqual(result.nearPois)
+  })
+
+  it('still runs the wide pass when there is budget left', async () => {
+    const queries: string[] = []
+    let clock = 1_000_000
+    vi.spyOn(Date, 'now').mockImplementation(() => clock)
+
+    mockOverpass((_url, query) => {
+      queries.push(query)
+      clock += 2_000
+      return ok([node(queries.length, { shop: 'supermarket' }, 50)])
+    })
+
+    await fetchPois(CENTER)
+    expect(queries).toHaveLength(2)
+  })
+
   it('deduplicates a place returned by more than one clause', async () => {
     mockOverpass(() =>
       ok([node(1, { shop: 'supermarket' }, 50), node(1, { shop: 'supermarket' }, 50)]),

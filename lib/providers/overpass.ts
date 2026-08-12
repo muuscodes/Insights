@@ -19,8 +19,13 @@ import type { Poi, TaggedFeature } from '../types'
  * OpenStreetMap POI data via Overpass.
  *
  * Public instances rate limit hard and time out under load, so requests walk
- * down a mirror list and the queries themselves are shaped to be cheap. A
- * 24 hour cache means a given address pays this cost once.
+ * down a mirror list and the queries themselves are shaped to be cheap.
+ *
+ * Repeat visits are absorbed one level up: the assembled report is cached in
+ * `lib/insights.ts`, not here. The per-fetch `revalidate` below is kept because
+ * it still helps sparse addresses, but it cannot be relied on, since a dense
+ * response runs past the 2 MB ceiling on a data cache entry and is silently
+ * refused. That is what made every request re-run this.
  */
 
 const CACHE_SECONDS = 60 * 60 * 24
@@ -33,6 +38,24 @@ const CACHE_SECONDS = 60 * 60 * 24
  */
 const REQUEST_TIMEOUT_MS = 25_000
 const OVERPASS_TIMEOUT_S = 25
+
+/**
+ * Total wall-clock budget for both Overpass passes.
+ *
+ * Per-request timeouts alone do not bound this. Three mirrors at 25s each, for
+ * two sequential queries, is 150s in the worst case, and the worst case does
+ * happen: a cold rural address measured 67.4s, past the 60s function ceiling,
+ * because sparse areas leave almost every category unsaturated and so fire the
+ * wide pass for nearly all of them.
+ *
+ * 45s leaves room under a 60s function limit for the other providers and the
+ * render itself. The wide pass is an enhancement, so when the budget is gone it
+ * is skipped rather than allowed to take the whole page down with it.
+ */
+const TOTAL_BUDGET_MS = 45_000
+
+/** Below this there is no point starting the wide pass at all. */
+const MIN_WIDE_PASS_MS = 8_000
 
 interface OverpassElement {
   type: 'node' | 'way' | 'relation'
@@ -122,14 +145,20 @@ function buildQuery(center: LatLng, radiusM: number, filters: readonly OsmFilter
  */
 const EMPTY_RESPONSE = 'Mirror returned no elements'
 
-async function runQuery(query: string): Promise<OverpassElement[]> {
+async function runQuery(query: string, deadlineAt: number): Promise<OverpassElement[]> {
   let anyMirrorSaidEmpty = false
 
   try {
     return await firstSuccessful(OVERPASS_MIRRORS, async (endpoint) => {
+      // Checked per mirror, not per query. Bounding each attempt at 25s still
+      // lets a three-mirror walk run to 75s, which is how the budget was
+      // overrun in the first place.
+      const remainingMs = deadlineAt - Date.now()
+      if (remainingMs <= 0) throw new UpstreamError('Overpass time budget exhausted')
+
       const response = await fetchJson<OverpassResponse>(endpoint, {
         revalidate: CACHE_SECONDS,
-        timeoutMs: REQUEST_TIMEOUT_MS,
+        timeoutMs: Math.min(REQUEST_TIMEOUT_MS, remainingMs),
         method: 'POST',
         body: new URLSearchParams({ data: query }).toString(),
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -237,7 +266,11 @@ export interface OverpassResult {
  *   happen.
  */
 export async function fetchPois(center: LatLng): Promise<OverpassResult> {
-  const nearElements = await runQuery(buildQuery(center, WALK_RADIUS_M, NEAR_QUERY_FILTERS))
+  const deadlineAt = Date.now() + TOTAL_BUDGET_MS
+  const nearElements = await runQuery(
+    buildQuery(center, WALK_RADIUS_M, NEAR_QUERY_FILTERS),
+    deadlineAt,
+  )
 
   const nearFeatures = dedupe(
     nearElements
@@ -268,11 +301,16 @@ export async function fetchPois(center: LatLng): Promise<OverpassResult> {
 
   let drivePois = nearPois
 
-  if (widenedCategories.length > 0) {
+  // Whatever is left of the budget after the near pass. A sparse address widens
+  // for almost every category, so this is exactly the case that used to overrun.
+  if (widenedCategories.length > 0 && deadlineAt - Date.now() >= MIN_WIDE_PASS_MS) {
     const wideFilters = widenedCategories.flatMap((key) => WIDE_FILTERS[key])
 
     try {
-      const wideElements = await runQuery(buildQuery(center, DRIVE_RADIUS_M, wideFilters))
+      const wideElements = await runQuery(
+        buildQuery(center, DRIVE_RADIUS_M, wideFilters),
+        deadlineAt,
+      )
 
       const widePois: Poi[] = []
       for (const element of wideElements) {
