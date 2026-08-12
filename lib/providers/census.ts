@@ -1,7 +1,7 @@
 import 'server-only'
 
 import { sqMetersToSqMiles, type LatLng } from '../geo'
-import { UpstreamError, fetchJson } from '../http'
+import { UpstreamError, fetchJson, firstSuccessful } from '../http'
 import type { Demographics, ResolvedAddress } from '../types'
 
 /**
@@ -20,8 +20,16 @@ import type { Demographics, ResolvedAddress } from '../types'
 const GEOCODER_BASE = 'https://geocoding.geo.census.gov/geocoder'
 const DATA_BASE = 'https://api.census.gov/data'
 
-/** Latest ACS 5-year release confirmed present in the API's dataset catalogue. */
-const ACS_VINTAGE = 2023
+/**
+ * ACS 5-year releases to try, newest first.
+ *
+ * A single hardcoded vintage is a scheduled outage: the Census retires old
+ * releases, and when this one goes the whole demographics panel starts
+ * reporting itself unavailable with nothing in the code to say why. Falling
+ * back a year keeps the panel alive until someone notices and adds the new
+ * release to the front of this list.
+ */
+const ACS_VINTAGES = [2023, 2022] as const
 
 const CACHE_GEOCODE = 60 * 60 * 24 * 30
 const CACHE_ACS = 60 * 60 * 24 * 30
@@ -168,14 +176,24 @@ export async function fetchDemographics(tract: TractInfo): Promise<Demographics>
     throw new UpstreamError('CENSUS_API_KEY is not configured')
   }
 
-  const url =
-    `${DATA_BASE}/${ACS_VINTAGE}/acs/acs5` +
-    `?get=${ACS_VARIABLES.join(',')}` +
-    `&for=tract:${tract.tract}` +
-    `&in=state:${tract.state}%20county:${tract.county}` +
-    `&key=${encodeURIComponent(key)}`
+  const { rows, vintage } = await firstSuccessful(ACS_VINTAGES, async (candidate) => {
+    const url =
+      `${DATA_BASE}/${candidate}/acs/acs5` +
+      `?get=${ACS_VARIABLES.join(',')}` +
+      `&for=tract:${tract.tract}` +
+      `&in=state:${tract.state}%20county:${tract.county}` +
+      `&key=${encodeURIComponent(key)}`
 
-  const rows = await fetchJson<string[][]>(url, { revalidate: CACHE_ACS })
+    const fetched = await fetchJson<string[][]>(url, { revalidate: CACHE_ACS })
+
+    // Treat a shapeless response as a failure so the next vintage is tried,
+    // rather than returning a Demographics full of nulls.
+    if (!fetched[0] || !fetched[1]) {
+      throw new UpstreamError(`ACS ${candidate} returned no rows for this tract`)
+    }
+
+    return { rows: fetched, vintage: candidate }
+  })
 
   const header = rows[0]
   const values = rows[1]
@@ -206,7 +224,7 @@ export async function fetchDemographics(tract: TractInfo): Promise<Demographics>
         ? Math.round((bachelorsPlus / over25) * 100)
         : null,
     landAreaSqMi: tract.landAreaSqMi,
-    vintage: ACS_VINTAGE,
+    vintage,
     specialUse: tract.specialUse,
   }
 }

@@ -1,6 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { __resetRateLimitForTests, clientKey, rateLimit } from './ratelimit'
+import {
+  MAX_TRACKED_KEYS,
+  __resetRateLimitForTests,
+  __trackedKeyCountForTests,
+  clientKey,
+  rateLimit,
+} from './ratelimit'
 
 afterEach(() => {
   __resetRateLimitForTests()
@@ -44,6 +50,33 @@ describe('rateLimit', () => {
 
     vi.setSystemTime(new Date('2026-01-01T00:01:01Z'))
     expect(rateLimit('a', 1, 60_000).ok).toBe(true)
+  })
+
+  it('stays bounded when every tracked key is still live', () => {
+    // The hard case for the cap: a flood of unique keys inside one window, so
+    // nothing has expired and sweeping expired entries alone frees nothing.
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-01-01T00:00:00Z'))
+
+    for (let i = 0; i < MAX_TRACKED_KEYS + 500; i++) {
+      rateLimit(`flood-${i}`, 5, 60_000)
+    }
+
+    // One over is the transient before the next insert evicts again.
+    expect(__trackedKeyCountForTests()).toBeLessThanOrEqual(MAX_TRACKED_KEYS + 1)
+  })
+
+  it('still expires windows normally once they lapse', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-01-01T00:00:00Z'))
+
+    for (let i = 0; i < 10; i++) rateLimit(`k-${i}`, 5, 60_000)
+    expect(__trackedKeyCountForTests()).toBe(10)
+
+    vi.setSystemTime(new Date('2026-01-01T00:01:01Z'))
+    // Re-touching one lapsed key restarts it rather than stacking a second.
+    expect(rateLimit('k-0', 5, 60_000).ok).toBe(true)
+    expect(__trackedKeyCountForTests()).toBe(10)
   })
 })
 

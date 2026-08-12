@@ -81,13 +81,16 @@ export async function fetchJson<T>(url: string, options: FetchOptions): Promise<
 }
 
 /**
- * Try each candidate in turn, returning the first success. Used for Overpass,
- * where the public instances rate limit aggressively and going down the mirror
- * list is the difference between a working page and an empty one.
+ * Try each candidate in turn, returning the first success.
+ *
+ * Used for Overpass, where the public instances rate limit aggressively and
+ * going down the mirror list is the difference between a working page and an
+ * empty one, and for ACS release years, where the candidate is a number rather
+ * than a URL.
  */
-export async function firstSuccessful<T>(
-  candidates: readonly string[],
-  attempt: (candidate: string) => Promise<T>,
+export async function firstSuccessful<T, C>(
+  candidates: readonly C[],
+  attempt: (candidate: C) => Promise<T>,
 ): Promise<T> {
   let lastError: unknown
 
