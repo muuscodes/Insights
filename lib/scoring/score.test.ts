@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import { METERS_PER_MILE } from '../geo'
 import { poi } from '@/test/fixtures'
-import { decay, scoreMode } from './score'
+import { SCORE_BANDS, decay, scoreBand, scoreLabel, scoreMode } from './score'
 
 const WALK_M = METERS_PER_MILE
 const DRIVE_M = 5 * METERS_PER_MILE
@@ -164,5 +164,32 @@ describe('scoreMode', () => {
 
   it('never exceeds the drive radius', () => {
     expect(scoreMode([poi({ shop: 'supermarket' }, DRIVE_M + 1)], 'drive').score).toBe(0)
+  })
+})
+
+describe('scoreBand', () => {
+  it('covers every score from 0 to 100', () => {
+    for (let score = 0; score <= 100; score++) {
+      expect(scoreBand(score), `score ${score}`).toBeDefined()
+    }
+  })
+
+  it('keeps the wording and the colour on the same thresholds', () => {
+    // These drifted once: tone banded at 70/40 while the wording banded at
+    // 90/70/50/25, so a 45 rendered in the encouraging yellow directly under
+    // "Most trips need a car".
+    for (let score = 0; score <= 100; score++) {
+      const band = scoreBand(score)
+      expect(band.label, `score ${score}`).toBe(scoreLabel(score))
+      if (score >= 70) expect(band.tone, `score ${score}`).toBe('good')
+      else if (score >= 50) expect(band.tone, `score ${score}`).toBe('mixed')
+      else expect(band.tone, `score ${score}`).toBe('poor')
+    }
+  })
+
+  it('lists bands in descending order so the first match wins', () => {
+    const mins = SCORE_BANDS.map((band) => band.min)
+    expect(mins).toEqual([...mins].sort((a, b) => b - a))
+    expect(mins[mins.length - 1]).toBe(0)
   })
 })

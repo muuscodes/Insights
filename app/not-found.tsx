@@ -18,7 +18,7 @@ export default function NotFound() {
 
       <Link
         href="/info"
-        className="slab-press rounded-pill border-ink bg-berry font-display mt-8 border-[3px] px-7 py-3 text-lg font-extrabold text-white shadow-[0_5px_0_var(--color-berry-deep)]"
+        className="slab-press rounded-pill border-ink bg-berry font-display text-ink mt-8 border-[3px] px-7 py-3 text-lg font-extrabold shadow-[0_5px_0_var(--color-berry-deep)]"
       >
         Look up an address
       </Link>

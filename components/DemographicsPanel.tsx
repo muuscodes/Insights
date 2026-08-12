@@ -46,7 +46,8 @@ export function DemographicsPanel({ demographics }: { demographics: Demographics
 
   return (
     <div className="slab px-6 py-6">
-      <p className="tag bg-sea text-white">{demographics.tractName}</p>
+      {/* Ink, not white: white on sea is 2.96:1 and this tag is 13px. */}
+      <p className="tag bg-sea text-ink">{demographics.tractName}</p>
 
       <dl className="mt-5 space-y-2">
         {rows.map((row) => (

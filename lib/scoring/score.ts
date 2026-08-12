@@ -50,12 +50,29 @@ function instanceWeight(rank: number): number {
  */
 const CATEGORY_SATURATION = 1.75
 
+/**
+ * Score bands, high to low. One list so the wording and the colour cannot drift
+ * apart: they did, and a 45 rendered in the encouraging yellow directly beneath
+ * the words "Most trips need a car".
+ */
+export const SCORE_BANDS = [
+  { min: 90, label: "Everything's here", tone: 'good' },
+  { min: 70, label: 'Very convenient', tone: 'good' },
+  { min: 50, label: 'Some errands work', tone: 'mixed' },
+  { min: 25, label: 'Most trips need a car', tone: 'poor' },
+  { min: 0, label: 'Car required', tone: 'poor' },
+] as const satisfies ReadonlyArray<{ min: number; label: string; tone: ScoreTone }>
+
+export type ScoreTone = 'good' | 'mixed' | 'poor'
+
+export function scoreBand(score: number): (typeof SCORE_BANDS)[number] {
+  // The last band starts at 0, so this only falls through for a negative score,
+  // which `scoreMode` already clamps away.
+  return SCORE_BANDS.find((band) => score >= band.min) ?? SCORE_BANDS[SCORE_BANDS.length - 1]!
+}
+
 export function scoreLabel(score: number): string {
-  if (score >= 90) return "Everything's here"
-  if (score >= 70) return 'Very convenient'
-  if (score >= 50) return 'Some errands work'
-  if (score >= 25) return 'Most trips need a car'
-  return 'Car required'
+  return scoreBand(score).label
 }
 
 /**

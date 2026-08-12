@@ -17,7 +17,7 @@ export default function InsightsError({
 
   return (
     <main className="mx-auto flex min-h-[75vh] w-full max-w-xl flex-col items-center justify-center px-6 py-20 text-center">
-      <span className="pop border-ink bg-berry grid h-20 w-20 place-items-center rounded-3xl border-[3px] text-white shadow-[0_6px_0_var(--color-berry-deep)]">
+      <span className="pop border-ink bg-berry text-ink grid h-20 w-20 place-items-center rounded-3xl border-[3px] shadow-[0_6px_0_var(--color-berry-deep)]">
         <CloudOff size={36} strokeWidth={2.75} aria-hidden />
       </span>
 

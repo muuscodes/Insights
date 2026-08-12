@@ -184,16 +184,14 @@ describe('filter tables', () => {
       }
 
       const asFeatures = (build: (t: Record<string, string>) => Record<string, string>) =>
-        samples.map(
-          (tags, index): TaggedFeature => ({
-            id: `node/${index}`,
-            name: null,
-            lat: 37.76,
-            lng: -122.41,
-            distanceM: 100,
-            tags: build({ ...tags, ...noise }),
-          }),
-        )
+        samples.map((tags, index): TaggedFeature => ({
+          id: `node/${index}`,
+          name: null,
+          lat: 37.76,
+          lng: -122.41,
+          distanceM: 100,
+          tags: build({ ...tags, ...noise }),
+        }))
 
       expect(computeScentProfile(asFeatures(trim))).toEqual(
         computeScentProfile(asFeatures((t) => t)),

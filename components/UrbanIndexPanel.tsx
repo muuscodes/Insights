@@ -8,8 +8,13 @@ export function UrbanIndexPanel({ urban }: { urban: UrbanIndex }) {
   return (
     <div className="slab px-6 py-6">
       <div className="flex flex-wrap items-center gap-5">
+        {/*
+          Grape is the one accent where neither white nor ink clears 4.5:1, so
+          it carries large text only. At 68px this is comfortably large text,
+          where the bar is 3:1 and ink measures 4.03:1.
+        */}
         <div className="pop border-ink bg-grape grid min-w-28 place-items-center rounded-2xl border-[3px] px-5 py-4 shadow-[0_6px_0_var(--color-grape-deep)]">
-          <span className="numeral text-[4.25rem] text-white">{urban.index}</span>
+          <span className="numeral text-ink text-[4.25rem]">{urban.index}</span>
         </div>
 
         <div>
@@ -28,8 +33,10 @@ export function UrbanIndexPanel({ urban }: { urban: UrbanIndex }) {
           {BANDS.map((band) => (
             <span
               key={band}
+              // grape-deep, not grape: at 12px this is small text, and plain
+              // grape is only 4.06:1 on the card. grape-deep is 6.66:1.
               className={`font-display text-xs font-bold ${
-                band === urban.label ? 'text-grape' : 'text-ink-faint'
+                band === urban.label ? 'text-grape-deep' : 'text-ink-faint'
               }`}
             >
               {band}
@@ -46,8 +53,8 @@ export function UrbanIndexPanel({ urban }: { urban: UrbanIndex }) {
           </dd>
         </div>
         <div className="border-ink bg-sea rounded-2xl border-[3px] px-4 py-3.5">
-          <dt className="text-sm text-white">Residents per sq mile</dt>
-          <dd className="numeral mt-1 text-4xl text-white">
+          <dt className="text-ink text-sm">Residents per sq mile</dt>
+          <dd className="numeral text-ink mt-1 text-4xl">
             {urban.popPerSqMi === null ? 'n/a' : numberFormat.format(urban.popPerSqMi)}
           </dd>
         </div>
