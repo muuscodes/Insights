@@ -7,7 +7,13 @@
 
   --color-ink: #241d18;
   --color-ink-soft: #6b5c50;
-  --color-ink-faint: #9c8b7d;
+  /*
+    Was #9c8b7d, which is 3.06:1 on cream and 3.23:1 on card. Both fail WCAG AA
+    for body text, and this token is used at text-xs and text-sm where it is
+    least forgiving. #7a6a5c is 4.84:1 on cream and still reads a clear step
+    quieter than ink-soft at 5.98:1.
+  */
+  --color-ink-faint: #7a6a5c;
 
   --color-lime: #35c46a;
   --color-lime-deep: #1f9a4e;

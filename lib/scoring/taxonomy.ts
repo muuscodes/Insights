@@ -207,6 +207,21 @@ export interface OsmFilter {
 export const CLASSIFIED_TAGS: readonly string[] = [...new Set(RULES.map((rule) => rule.tag))]
 
 /**
+ * Every tag key `classify` reads, rules plus the guard clauses at the top of it.
+ *
+ * Declared so the Overpass layer can discard everything else before a feature
+ * is retained. Add to this whenever `classify` learns to read a new key, or the
+ * key will be stripped before it ever gets there. `retains-every-tag-classify-
+ * and-scent-read` in taxonomy.test.ts fails loudly if this drifts.
+ */
+export const CLASSIFY_TAG_KEYS: readonly string[] = [
+  ...CLASSIFIED_TAGS,
+  'disused',
+  'disused:shop',
+  'disused:amenity',
+]
+
+/**
  * Filters for the 1-mile query.
  *
  * Deliberately broader than the classification rules. Overpass cost is

@@ -1,17 +1,17 @@
 import { Car, Footprints } from 'lucide-react'
 
 import { formatDistance, walkMinutes } from '@/lib/geo'
+import { scoreBand, type ScoreTone } from '@/lib/scoring/score'
 import type { ScoreResult } from '@/lib/types'
 
-/** Colour the whole score block by how good the score actually is. */
-function toneFor(score: number): { block: string; bar: string } {
-  if (score >= 70) {
-    return { block: 'bg-lime shadow-[0_6px_0_var(--color-lime-deep)]', bar: 'bg-lime' }
-  }
-  if (score >= 40) {
-    return { block: 'bg-sun shadow-[0_6px_0_var(--color-sun-deep)]', bar: 'bg-sun' }
-  }
-  return { block: 'bg-tang shadow-[0_6px_0_var(--color-tang-deep)]', bar: 'bg-tang' }
+/**
+ * Colour the whole score block by how good the score actually is. Driven by the
+ * same band table as the wording, so the two cannot disagree.
+ */
+const TONE: Record<ScoreTone, { block: string; bar: string }> = {
+  good: { block: 'bg-lime shadow-[0_6px_0_var(--color-lime-deep)]', bar: 'bg-lime' },
+  mixed: { block: 'bg-sun shadow-[0_6px_0_var(--color-sun-deep)]', bar: 'bg-sun' },
+  poor: { block: 'bg-tang shadow-[0_6px_0_var(--color-tang-deep)]', bar: 'bg-tang' },
 }
 
 export function ScoreMeter({
@@ -23,7 +23,7 @@ export function ScoreMeter({
   result: ScoreResult
   showWalkTimes: boolean
 }) {
-  const tone = toneFor(result.score)
+  const tone = TONE[scoreBand(result.score).tone]
   const Icon = kind === 'Walking' ? Footprints : Car
   const top = result.breakdown.filter((row) => row.count > 0).slice(0, 6)
 
@@ -57,10 +57,13 @@ export function ScoreMeter({
         <div
           className={`fill h-full ${tone.bar}`}
           style={{ width: `${Math.max(result.score, 3)}%` }}
-          role="meter"
+          // progressbar rather than meter: screen reader support for `meter` is
+          // patchy, and the two convey the same thing here.
+          role="progressbar"
           aria-valuenow={result.score}
           aria-valuemin={0}
           aria-valuemax={100}
+          aria-valuetext={`${result.score} out of 100, ${result.label}`}
           aria-label={`${kind} score`}
         />
       </div>

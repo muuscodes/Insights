@@ -30,12 +30,19 @@ function normalizeLog(value: number, min: number, max: number): number {
 /**
  * Calibration bounds. Chosen so that a quiet rural crossroads lands near 0, a
  * typical single-family suburb lands near the middle of the Suburban band, and
- * a dense inner-city neighbourhood saturates.
+ * a dense inner-city neighbourhood approaches, without reaching, the top.
+ *
+ * The upper bounds used to be 800 and 30,000, and they were too low to be
+ * calibration at all. One ordinary San Francisco address measured 854 amenities
+ * and 35,817 residents per square mile, clearing both, so it pinned the index
+ * at exactly 100 with nothing left to distinguish it from somewhere genuinely
+ * denser. Manhattan tracts run past 70,000 residents per square mile, so the
+ * ceiling has to sit above that for the top band to mean anything.
  */
 const POI_PER_SQ_MI_MIN = 5
-const POI_PER_SQ_MI_MAX = 800
+const POI_PER_SQ_MI_MAX = 2_500
 const POP_PER_SQ_MI_MIN = 100
-const POP_PER_SQ_MI_MAX = 30_000
+const POP_PER_SQ_MI_MAX = 80_000
 
 function labelFor(index: number): DensityLabel {
   if (index < 25) return 'Rural'

@@ -1,9 +1,11 @@
 import 'server-only'
 
 import { DRIVE_RADIUS_M, WALK_RADIUS_M, haversineMeters, type LatLng } from '../geo'
-import { UpstreamError, fetchJson, firstSuccessful } from '../http'
+import { UpstreamError, fetchJson, hedgedRace } from '../http'
 import { dedupePois } from '../scoring/dedupe'
+import { SCENT_TAG_KEYS } from '../scoring/scent'
 import {
+  CLASSIFY_TAG_KEYS,
   NEAR_QUERY_FILTERS,
   OVERPASS_MIRRORS,
   WIDE_FILTERS,
@@ -17,20 +19,53 @@ import type { Poi, TaggedFeature } from '../types'
  * OpenStreetMap POI data via Overpass.
  *
  * Public instances rate limit hard and time out under load, so requests walk
- * down a mirror list and the queries themselves are shaped to be cheap. A
- * 24 hour cache means a given address pays this cost once.
+ * down a mirror list and the queries themselves are shaped to be cheap.
+ *
+ * Repeat visits are absorbed one level up: the assembled report is cached in
+ * `lib/insights.ts`, not here. The per-fetch `revalidate` below is kept because
+ * it still helps sparse addresses, but it cannot be relied on, since a dense
+ * response runs past the 2 MB ceiling on a data cache entry and is silently
+ * refused. That is what made every request re-run this.
  */
 
 const CACHE_SECONDS = 60 * 60 * 24
 
 /**
- * Deliberately shorter than it could be. Measured on healthy instances, the
- * 1-mile query takes about 7 seconds and the 5-mile one about 18. Anything past
- * 25 means that instance is overloaded, and moving to the next mirror beats
- * waiting: a 45 second timeout turned one slow mirror into a 106 second page.
+ * How long one mirror gets before we give up on it entirely.
+ *
+ * Kept generous on purpose, because with the hedge below this no longer sets
+ * the latency. A slow leader is overtaken after HEDGE_DELAY_MS rather than
+ * waited out, so a long timeout costs nothing and a short one is actively
+ * harmful: cutting this to 15s produced seven spurious query failures in one
+ * test run, since a mirror that is merely queueing us behind its rate limit
+ * still answers correctly given a little longer.
+ *
+ * The server-side value matters as much as ours: it tells Overpass to abandon
+ * an expensive query rather than hold the connection until we give up on it.
  */
 const REQUEST_TIMEOUT_MS = 25_000
 const OVERPASS_TIMEOUT_S = 25
+
+/**
+ * Head start the leading mirror gets before the next is launched alongside it.
+ *
+ * Sits above the normal success time so a healthy request never pays for the
+ * hedge. Measured on the fastest mirror: the 1-mile query is 4.1s over a dense
+ * address and 1.5s over a sparse one, and the 5-mile query is 7.4s. A slow
+ * mirror now costs 5s before a second opinion is sought, rather than a full
+ * timeout before one is permitted.
+ */
+const HEDGE_DELAY_MS = 5_000
+
+/**
+ * Wall-clock budget for one pass, covering however many mirrors it tries.
+ *
+ * Per-request timeouts alone do not bound a pass. Three mirrors at 15s each is
+ * 45s on its own, and before this existed a cold rural address measured 67.4s,
+ * past the function ceiling. Each pass now carries its own budget, which is
+ * correct because they are fetched independently and cached separately.
+ */
+const TOTAL_BUDGET_MS = 45_000
 
 interface OverpassElement {
   type: 'node' | 'way' | 'relation'
@@ -111,36 +146,65 @@ function buildQuery(center: LatLng, radiusM: number, filters: readonly OsmFilter
 }
 
 /**
- * Run a query, moving to the next mirror on failure.
+ * Run a query against whichever mirror answers first.
  *
- * An empty result also counts as a failure worth retrying elsewhere, because a
- * mirror that only carries part of the planet answers 200 with nothing in it.
+ * An empty result counts as a failure worth asking someone else about, because
+ * a mirror that only carries part of the planet answers 200 with nothing in it.
  * If every mirror agrees the area is empty, the empty answer is returned: some
  * places genuinely have nothing within a mile.
  */
 const EMPTY_RESPONSE = 'Mirror returned no elements'
 
-async function runQuery(query: string): Promise<OverpassElement[]> {
+/**
+ * Rotate the mirror list so a pass can lead with someone other than the primary.
+ *
+ * The 5-mile pass now runs after the page has already rendered, so it holds a
+ * slot for a long time after the reader stops waiting for it. Since the primary
+ * mirror allows two concurrent queries per IP, leaving both passes pointed at it
+ * means one visitor's trailing wide query competes with the next visitor's near
+ * query. Measured: a dense address that serves in 7.3s on its own took 33s while
+ * a previous request's wide pass was still running. Leading the two passes with
+ * different hosts spends the allowance of two rate limiters instead of one.
+ */
+const rotated = (offset: number): readonly string[] => [
+  ...OVERPASS_MIRRORS.slice(offset),
+  ...OVERPASS_MIRRORS.slice(0, offset),
+]
+
+async function runQuery(
+  query: string,
+  deadlineAt: number,
+  mirrors: readonly string[] = OVERPASS_MIRRORS,
+): Promise<OverpassElement[]> {
   let anyMirrorSaidEmpty = false
 
   try {
-    return await firstSuccessful(OVERPASS_MIRRORS, async (endpoint) => {
-      const response = await fetchJson<OverpassResponse>(endpoint, {
-        revalidate: CACHE_SECONDS,
-        timeoutMs: REQUEST_TIMEOUT_MS,
-        method: 'POST',
-        body: new URLSearchParams({ data: query }).toString(),
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      })
+    return await hedgedRace(
+      mirrors,
+      async (endpoint) => {
+        // Checked per mirror rather than per query, so the shared budget still
+        // bounds a walk that fans out.
+        const remainingMs = deadlineAt - Date.now()
+        if (remainingMs <= 0) throw new UpstreamError('Overpass time budget exhausted')
 
-      const elements = response.elements ?? []
-      if (elements.length === 0) {
-        anyMirrorSaidEmpty = true
-        throw new UpstreamError(EMPTY_RESPONSE)
-      }
+        const response = await fetchJson<OverpassResponse>(endpoint, {
+          revalidate: CACHE_SECONDS,
+          timeoutMs: Math.min(REQUEST_TIMEOUT_MS, remainingMs),
+          method: 'POST',
+          body: new URLSearchParams({ data: query }).toString(),
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        })
 
-      return elements
-    })
+        const elements = response.elements ?? []
+        if (elements.length === 0) {
+          anyMirrorSaidEmpty = true
+          throw new UpstreamError(EMPTY_RESPONSE)
+        }
+
+        return elements
+      },
+      HEDGE_DELAY_MS,
+    )
   } catch (error) {
     // Every mirror has now been tried. If at least one of them answered cleanly
     // and simply had nothing to report, believe it: plenty of addresses really
@@ -148,6 +212,26 @@ async function runQuery(query: string): Promise<OverpassElement[]> {
     if (anyMirrorSaidEmpty) return []
     throw error
   }
+}
+
+/**
+ * Tag keys worth keeping past this boundary.
+ *
+ * `out center tags` hands back every tag on every feature, and OSM features
+ * carry a lot of them: opening hours, wheelchair access, phone numbers, address
+ * components, half a dozen `name:<lang>` variants. Two consumers read raw tags
+ * and between them they touch fifteen keys, so everything else is dead weight
+ * that we would otherwise hold in memory and write into the cache entry.
+ */
+const RETAINED_TAG_KEYS: ReadonlySet<string> = new Set([...CLASSIFY_TAG_KEYS, ...SCENT_TAG_KEYS])
+
+function retainedTags(tags: Record<string, string>): Record<string, string> {
+  const kept: Record<string, string> = {}
+  for (const key of Object.keys(tags)) {
+    const value = tags[key]
+    if (value !== undefined && RETAINED_TAG_KEYS.has(key)) kept[key] = value
+  }
+  return kept
 }
 
 function toFeature(element: OverpassElement, center: LatLng): TaggedFeature | null {
@@ -161,11 +245,13 @@ function toFeature(element: OverpassElement, center: LatLng): TaggedFeature | nu
 
   return {
     id: `${element.type}/${element.id}`,
+    // Read before the trim, since `name` is promoted to its own field and is
+    // not one of the keys worth carrying around as a tag.
     name: tags.name ?? null,
     lat,
     lng,
     distanceM: haversineMeters(center, { lat, lng }),
-    tags,
+    tags: retainedTags(tags),
   }
 }
 
@@ -184,11 +270,14 @@ function dedupe(features: TaggedFeature[]): TaggedFeature[] {
  */
 const SATURATED_COUNT = 3
 
-export interface OverpassResult {
+export interface NearResult {
   /** Everything inside the walking radius, classified. Drives walk score + map. */
   nearPois: Poi[]
   /** Everything inside the walking radius including unclassified smell sources. */
   nearFeatures: TaggedFeature[]
+}
+
+export interface WideResult {
   /** Near POIs plus any wider results, for the driving score. */
   drivePois: Poi[]
   /** Categories the wide query actually had to go and fetch. */
@@ -196,24 +285,22 @@ export interface OverpassResult {
 }
 
 /**
- * Fetch POIs for one address.
+ * The 1-mile pass. Powers the walking score, the scent profile and the map, and
+ * is bounded in size everywhere.
  *
- * Two stages, because a naive 5-mile query does not survive contact with a
- * dense city. A measured 5-mile whitelist query around Times Square returned
- * 31,785 elements and 10.9 MB in 36 seconds.
- *
- *   Stage 1 pulls the full 1-mile set. It powers the walking score, the scent
- *   profile and the map, and it is bounded in size everywhere.
- *
- *   Stage 2 goes out to 5 miles, but only for categories that stage 1 left
- *   short. This is self-balancing: downtown saturates almost every category
- *   inside a mile so stage 2 asks for little or nothing, while a rural address
- *   triggers a wide query that returns very few rows because the area really is
- *   empty. The expensive case, dense *and* wide, is the one case that cannot
- *   happen.
+ * Everything on the report except the driving score comes from this, which is
+ * why it is separated from the wide pass below: it is the fast half, and
+ * waiting for the slow half before showing any of it was the whole cold-start
+ * problem. Measured on the fastest mirror, this is 4.1s over a dense address
+ * and 1.5s over a sparse one.
  */
-export async function fetchPois(center: LatLng): Promise<OverpassResult> {
-  const nearElements = await runQuery(buildQuery(center, WALK_RADIUS_M, NEAR_QUERY_FILTERS))
+export async function fetchNearPois(center: LatLng): Promise<NearResult> {
+  const deadlineAt = Date.now() + TOTAL_BUDGET_MS
+
+  const nearElements = await runQuery(
+    buildQuery(center, WALK_RADIUS_M, NEAR_QUERY_FILTERS),
+    deadlineAt,
+  )
 
   const nearFeatures = dedupe(
     nearElements
@@ -232,7 +319,35 @@ export async function fetchPois(center: LatLng): Promise<OverpassResult> {
 
   // Collapse the many polygons OSM uses for one real place before anything
   // counts them.
-  const nearPois = dedupePois(classified)
+  return { nearPois: dedupePois(classified), nearFeatures }
+}
+
+/**
+ * The 5-mile pass, for the driving score only.
+ *
+ * Goes wide only for categories the 1-mile pass left short. This is
+ * self-balancing: downtown saturates almost every category inside a mile so
+ * this asks for little or nothing, while a rural address triggers a wide query
+ * that returns very few rows because the area really is empty. The expensive
+ * case, dense *and* wide, is the one case that cannot happen.
+ *
+ * It is nonetheless the slow half, and irreducibly so. A sparse address widens
+ * for almost every category, and that query measured 9.9s on the healthiest
+ * mirror, 15.0s and 31.5s on the other two. Added to the near pass, a complete
+ * report simply cannot come in under 10s for such an address, which is why the
+ * caller renders without this and fills it in when it arrives.
+ *
+ * Splitting the clauses across mirrors to run them concurrently was measured
+ * and rejected: it binds to the slowest mirror, so the same query split three
+ * ways took 16.6s against 9.9s undivided. Running it alongside the near pass on
+ * one host was measured and rejected too, because `/api/status` reports
+ * `Rate limit: 2` and spending both slots on one report makes everything queue.
+ */
+export async function fetchDrivePois(
+  center: LatLng,
+  nearPois: readonly Poi[],
+): Promise<WideResult> {
+  const deadlineAt = Date.now() + TOTAL_BUDGET_MS
 
   // Which categories still look thin after the 1-mile pass?
   const counts = new Map<CategoryKey, number>()
@@ -242,31 +357,35 @@ export async function fetchPois(center: LatLng): Promise<OverpassResult> {
     (key) => (counts.get(key) ?? 0) < SATURATED_COUNT,
   )
 
-  let drivePois = nearPois
+  const unwidened: WideResult = { drivePois: [...nearPois], widenedCategories }
 
-  if (widenedCategories.length > 0) {
-    const wideFilters = widenedCategories.flatMap((key) => WIDE_FILTERS[key])
+  if (widenedCategories.length === 0) return unwidened
 
-    try {
-      const wideElements = await runQuery(buildQuery(center, DRIVE_RADIUS_M, wideFilters))
+  const wideFilters = widenedCategories.flatMap((key) => WIDE_FILTERS[key])
 
-      const widePois: Poi[] = []
-      for (const element of wideElements) {
-        const feature = toFeature(element, center)
-        if (!feature || feature.distanceM > DRIVE_RADIUS_M) continue
-        const category = classify(feature.tags)
-        if (category) widePois.push({ ...feature, category })
-      }
+  try {
+    // Leads with the second mirror so this trailing query stops competing with
+    // the next visitor's 1-mile pass for the primary's two slots.
+    const wideElements = await runQuery(
+      buildQuery(center, DRIVE_RADIUS_M, wideFilters),
+      deadlineAt,
+      rotated(1),
+    )
 
-      const merged = new Map<string, Poi>()
-      for (const poi of [...nearPois, ...widePois]) merged.set(poi.id, poi)
-      drivePois = dedupePois([...merged.values()])
-    } catch {
-      // The wide pass is an enhancement. If it fails, the driving score still
-      // computes from the 1-mile set; it just reads lower than it should.
-      drivePois = nearPois
+    const widePois: Poi[] = []
+    for (const element of wideElements) {
+      const feature = toFeature(element, center)
+      if (!feature || feature.distanceM > DRIVE_RADIUS_M) continue
+      const category = classify(feature.tags)
+      if (category) widePois.push({ ...feature, category })
     }
-  }
 
-  return { nearPois, nearFeatures, drivePois, widenedCategories }
+    const merged = new Map<string, Poi>()
+    for (const poi of [...nearPois, ...widePois]) merged.set(poi.id, poi)
+    return { drivePois: dedupePois([...merged.values()]), widenedCategories }
+  } catch {
+    // The wide pass is an enhancement. If it fails, the driving score still
+    // computes from the 1-mile set; it just reads lower than it should.
+    return unwidened
+  }
 }

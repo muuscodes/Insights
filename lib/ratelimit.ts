@@ -19,11 +19,30 @@ interface Window {
 const windows = new Map<string, Window>()
 
 /** Bound the map so a flood of unique IPs cannot grow it without limit. */
-const MAX_TRACKED_KEYS = 10_000
+export const MAX_TRACKED_KEYS = 10_000
 
-function sweep(now: number): void {
+/**
+ * Drop expired windows, then, if that freed nothing, drop the oldest live ones.
+ *
+ * The second half matters: sweeping expired entries alone does not bound the
+ * map. Enough unique keys inside a single window and nothing is expired yet, so
+ * the sweep deletes nothing and the map keeps growing, which is the opposite of
+ * what the cap is for. Evicting by soonest reset drops the keys closest to
+ * being forgotten anyway.
+ */
+function evict(now: number): void {
   for (const [key, window] of windows) {
     if (window.resetAt <= now) windows.delete(key)
+  }
+
+  if (windows.size <= MAX_TRACKED_KEYS) return
+
+  const liveByReset = [...windows.entries()].sort((a, b) => a[1].resetAt - b[1].resetAt)
+  const excess = windows.size - MAX_TRACKED_KEYS
+
+  for (let i = 0; i < excess; i++) {
+    const entry = liveByReset[i]
+    if (entry) windows.delete(entry[0])
   }
 }
 
@@ -37,7 +56,7 @@ export interface RateLimitResult {
 export function rateLimit(key: string, limit: number, windowMs: number): RateLimitResult {
   const now = Date.now()
 
-  if (windows.size > MAX_TRACKED_KEYS) sweep(now)
+  if (windows.size > MAX_TRACKED_KEYS) evict(now)
 
   const existing = windows.get(key)
 
@@ -72,4 +91,9 @@ export function clientKey(request: Request): string {
 /** Test seam: the limiter is module-level state shared across requests. */
 export function __resetRateLimitForTests(): void {
   windows.clear()
+}
+
+/** Test seam: lets the eviction test observe that the map stays bounded. */
+export function __trackedKeyCountForTests(): number {
+  return windows.size
 }

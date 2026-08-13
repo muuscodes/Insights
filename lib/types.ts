@@ -12,7 +12,10 @@ export interface TaggedFeature {
   lng: number
   /** Straight-line distance from the searched address, in metres. */
   distanceM: number
-  /** Raw OSM tags, retained so the scent profile can re-read cuisine values. */
+  /**
+   * OSM tags, trimmed at the provider boundary to the keys `classify` and the
+   * scent profile actually read. Not the full tag set the API returned.
+   */
   tags: Record<string, string>
 }
 
@@ -113,10 +116,14 @@ export interface ResolvedAddress {
  */
 export type Panel<T> = { ok: true; data: T } | { ok: false; reason: string }
 
-export interface InsightsPayload {
+/**
+ * Everything derivable from the 1-mile pass, which is every panel except the
+ * driving score. Kept separate because the 5-mile pass behind the driving score
+ * is several times slower, and the page renders this and streams that in.
+ */
+export interface CoreInsights {
   address: ResolvedAddress
   walk: Panel<ScoreResult>
-  drive: Panel<ScoreResult>
   urban: Panel<UrbanIndex>
   scent: Panel<ScentProfile>
   demographics: Panel<Demographics>
@@ -124,6 +131,11 @@ export interface InsightsPayload {
   /** POIs inside the walking radius, for the map. Tags stripped to cut payload. */
   mapPois: MapPoi[]
   generatedAt: string
+}
+
+/** The core report plus the driving score, for callers that need one object. */
+export interface InsightsPayload extends CoreInsights {
+  drive: Panel<ScoreResult>
 }
 
 /** A POI as the map needs it: no raw tags, which are server-side detail. */

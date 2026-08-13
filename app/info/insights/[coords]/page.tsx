@@ -1,4 +1,4 @@
-import { Suspense, cache } from 'react'
+import { Suspense } from 'react'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
@@ -6,6 +6,7 @@ import {
   ArrowLeft,
   Bird as BirdIcon,
   Building2,
+  Car,
   Map as MapIcon,
   Route,
   Users,
@@ -22,7 +23,7 @@ import { ScoreMeter } from '@/components/ScoreMeter'
 import { ShareLink } from '@/components/ShareLink'
 import { UrbanIndexPanel } from '@/components/UrbanIndexPanel'
 import { formatCoordParam, parseCoordParam, type LatLng } from '@/lib/geo'
-import { buildInsights } from '@/lib/insights'
+import { buildCoreInsights, buildDriveScore } from '@/lib/insights'
 import { labelSchema } from '@/lib/schemas'
 
 /*
@@ -31,16 +32,27 @@ import { labelSchema } from '@/lib/schemas'
   no database, no session and no link that can expire.
 */
 
+/**
+ * The core report is quick, but the streamed driving score behind it runs a
+ * 5-mile Overpass query that measured 9.9s on the healthiest mirror and 31.5s
+ * on the worst. The response stays open until that resolves, so the ceiling has
+ * to cover it even though nothing the reader can see is waiting on it.
+ */
+export const maxDuration = 60
+
 interface PageProps {
   params: Promise<{ coords: string }>
   searchParams: Promise<Record<string, string | string[] | undefined>>
 }
 
-/**
- * `cache` dedupes the work between generateMetadata and the report body, which
- * Next renders as two passes over the same request.
- */
-const getInsights = cache(buildInsights)
+/*
+  Deduplicating generateMetadata against the report body used to be attempted
+  here with React's `cache`, which does nothing across those two calls: it
+  compares arguments by identity and each of them parses its own LatLng out of
+  the URL, so the two never matched and the report was assembled twice. The
+  deduplication now lives in `lib/insights.ts`, keyed on the coordinate string.
+*/
+const getInsights = buildCoreInsights
 
 async function resolveInputs(props: PageProps) {
   const { coords: rawCoords } = await props.params
@@ -70,14 +82,12 @@ export async function generateMetadata(props: PageProps): Promise<Metadata> {
   try {
     const insights = await getInsights(inputs.center, inputs.label)
     const walk = insights.walk.ok ? insights.walk.data.score : null
-    const drive = insights.drive.ok ? insights.drive.data.score : null
     const band = insights.urban.ok ? insights.urban.data.label : null
 
-    const parts = [
-      walk === null ? null : `Walk ${walk}`,
-      drive === null ? null : `Drive ${drive}`,
-      band,
-    ].filter(Boolean)
+    // Deliberately no driving score. Metadata is resolved before the document
+    // head can be flushed, so reading it here would put the slow 5-mile pass
+    // back in front of the whole page, which is what streaming it avoids.
+    const parts = [walk === null ? null : `Walk ${walk}`, band].filter(Boolean)
 
     return {
       title: `${insights.address.formatted} | Address Insights`,
@@ -105,6 +115,40 @@ export default async function InsightsPage(props: PageProps) {
     <Suspense fallback={<InsightsSkeleton />}>
       <InsightsReport center={inputs.center} label={inputs.label} />
     </Suspense>
+  )
+}
+
+/** Resolved on its own so the rest of the report does not wait for it. */
+async function DriveScore({ center }: { center: LatLng }) {
+  const drive = await buildDriveScore(center)
+
+  return drive.ok ? (
+    <ScoreMeter kind="Driving" result={drive.data} showWalkTimes={false} />
+  ) : (
+    <Unavailable reason={drive.reason} />
+  )
+}
+
+/** Placeholder while the 5-mile pass is still running. */
+function DriveScorePending() {
+  return (
+    <div className="slab px-6 py-6">
+      <div className="flex items-center justify-between gap-3">
+        <span className="font-display text-ink flex items-center gap-2 text-xl font-extrabold">
+          <Car size={20} strokeWidth={2.75} aria-hidden />
+          Driving
+        </span>
+        <span className="tag bg-cream-deep text-ink">5 mi</span>
+      </div>
+
+      <p className="text-ink-soft mt-6 leading-relaxed" role="status">
+        Casting wider for anything worth a drive. This one takes a few seconds longer than the rest.
+      </p>
+
+      <div className="rounded-pill border-ink bg-cream-deep mt-6 h-4 w-full overflow-hidden border-[3px]">
+        <div className="blink bg-ink-faint h-full w-1/3" aria-hidden />
+      </div>
+    </div>
   )
 }
 
@@ -164,11 +208,15 @@ async function InsightsReport({ center, label }: { center: LatLng; label?: strin
             ) : (
               <Unavailable reason={insights.walk.reason} />
             )}
-            {insights.drive.ok ? (
-              <ScoreMeter kind="Driving" result={insights.drive.data} showWalkTimes={false} />
-            ) : (
-              <Unavailable reason={insights.drive.reason} />
-            )}
+            {/*
+              The driving score is the one panel that needs the 5-mile Overpass
+              pass, which measured 9.9s on the healthiest mirror against 1.5s
+              for the 1-mile pass. Streaming it means the rest of the report is
+              on screen while it finishes rather than behind it.
+            */}
+            <Suspense fallback={<DriveScorePending />}>
+              <DriveScore center={center} />
+            </Suspense>
           </div>
         </FieldSection>
       </div>

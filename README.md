@@ -19,7 +19,7 @@ This was a very quick turnaround so I handled the big stuff/polishing while AI h
 ### What the AI drove
 
 - All implementation, including the scoring heuristics and their calibration
-- The entire testing suite (174 tests)
+- The entire testing suite (230 tests)
 - First pass at UI and design
 - The backend API routes and database config
 

@@ -50,12 +50,48 @@ function instanceWeight(rank: number): number {
  */
 const CATEGORY_SATURATION = 1.75
 
+/**
+ * Share of a saturated category's credit that depends on how close its nearest
+ * instance actually is.
+ *
+ * Without this the top of the scale is dead. Three instances inside the
+ * quarter-mile full-credit zone saturates a category, and a dense address has
+ * hundreds, so every category pins at 1.0 and the total pins at 100. A measured
+ * San Francisco address scored 100 on walking, 100 on driving and 100 on the
+ * urban index, which makes it indistinguishable from Midtown Manhattan.
+ *
+ * `decay` deliberately treats everything inside 402 m as equally convenient,
+ * which is right for the main signal: a five minute walk is a five minute walk.
+ * But once a category is saturated that is the only thing left to separate two
+ * addresses, and a grocery at 30 m genuinely does beat one at 390 m. This
+ * reserves a small slice of each category for that, so a perfect 100 now means
+ * everything is not merely present but close.
+ */
+const PROXIMITY_SHARE = 0.12
+
+/**
+ * Score bands, high to low. One list so the wording and the colour cannot drift
+ * apart: they did, and a 45 rendered in the encouraging yellow directly beneath
+ * the words "Most trips need a car".
+ */
+export const SCORE_BANDS = [
+  { min: 90, label: "Everything's here", tone: 'good' },
+  { min: 70, label: 'Very convenient', tone: 'good' },
+  { min: 50, label: 'Some errands work', tone: 'mixed' },
+  { min: 25, label: 'Most trips need a car', tone: 'poor' },
+  { min: 0, label: 'Car required', tone: 'poor' },
+] as const satisfies ReadonlyArray<{ min: number; label: string; tone: ScoreTone }>
+
+export type ScoreTone = 'good' | 'mixed' | 'poor'
+
+export function scoreBand(score: number): (typeof SCORE_BANDS)[number] {
+  // The last band starts at 0, so this only falls through for a negative score,
+  // which `scoreMode` already clamps away.
+  return SCORE_BANDS.find((band) => score >= band.min) ?? SCORE_BANDS[SCORE_BANDS.length - 1]!
+}
+
 export function scoreLabel(score: number): string {
-  if (score >= 90) return "Everything's here"
-  if (score >= 70) return 'Very convenient'
-  if (score >= 50) return 'Some errands work'
-  if (score >= 25) return 'Most trips need a car'
-  return 'Car required'
+  return scoreBand(score).label
 }
 
 /**
@@ -99,10 +135,16 @@ export function scoreMode(pois: readonly Poi[], mode: Mode): ScoreResult {
     }
 
     const saturation = Math.min(raw / CATEGORY_SATURATION, 1)
-    const contribution = maxTotal > 0 ? (saturation * weight * 100) / maxTotal : 0
+    const nearest = found[0]
+
+    // 1 at the doorstep, 0 at the full-credit threshold and anywhere past it.
+    const fullCreditM = radiusM * FULL_CREDIT_FRACTION
+    const proximity = nearest ? Math.max(0, 1 - nearest.distanceM / fullCreditM) : 0
+
+    const effective = saturation * (1 - PROXIMITY_SHARE + PROXIMITY_SHARE * proximity)
+    const contribution = maxTotal > 0 ? (effective * weight * 100) / maxTotal : 0
     total += contribution
 
-    const nearest = found[0]
     breakdown.push({
       key: category.key,
       label: category.label,

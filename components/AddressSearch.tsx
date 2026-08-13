@@ -158,6 +158,10 @@ export function AddressSearch({ autoFocus = false }: { autoFocus?: boolean }) {
           />
         </div>
 
+        {/*
+          Ink rather than white on the berry fill: white is 2.91:1 there, and at
+          16px bold this does not qualify as large text. Ink is 5.71:1.
+        */}
         <button
           type="button"
           disabled={navigating || suggestions.length === 0}
@@ -165,14 +169,20 @@ export function AddressSearch({ autoFocus = false }: { autoFocus?: boolean }) {
             const choice = suggestions[active] ?? suggestions[0]
             if (choice) go(choice)
           }}
-          className="slab-press rounded-pill border-ink bg-berry font-display disabled:bg-ink-faint inline-flex w-full shrink-0 items-center justify-center gap-2 border-[3px] px-6 py-3 text-base font-extrabold text-white shadow-[0_5px_0_var(--color-berry-deep)] disabled:cursor-not-allowed disabled:shadow-[0_5px_0_var(--color-ink-soft)] sm:w-auto"
+          className="slab-press rounded-pill border-ink bg-berry font-display text-ink disabled:bg-ink-faint inline-flex w-full shrink-0 items-center justify-center gap-2 border-[3px] px-6 py-3 text-base font-extrabold shadow-[0_5px_0_var(--color-berry-deep)] disabled:cursor-not-allowed disabled:shadow-[0_5px_0_var(--color-ink-soft)] sm:w-auto"
         >
           {navigating ? <Loader2 size={17} className="animate-spin" aria-hidden /> : null}
           {navigating ? 'Loading' : "Let's go"}
         </button>
       </div>
 
-      <div className="mt-3 min-h-8 px-2">
+      {/*
+        Announced, because this region is the only feedback that a search is
+        running, that the matches are all non-US, or that nothing matched.
+        Without it a screen reader user gets silence while the list quietly
+        populates behind them. `polite` so it waits for a pause in typing.
+      */}
+      <div className="mt-3 min-h-8 px-2" role="status" aria-live="polite">
         {loading ? (
           <p className="font-display text-ink-faint font-bold">Looking...</p>
         ) : nonUsOnly ? (

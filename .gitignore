@@ -35,5 +35,7 @@ yarn-debug.log*
 yarn-error.log*
 .idea/
 
-# personal notes
+# personal notes, not part of the deliverable
 study.txt
+study.md
+TALKING-POINTS.md

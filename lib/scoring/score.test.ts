@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import { METERS_PER_MILE } from '../geo'
 import { poi } from '@/test/fixtures'
-import { decay, scoreMode } from './score'
+import { SCORE_BANDS, decay, scoreBand, scoreLabel, scoreMode } from './score'
 
 const WALK_M = METERS_PER_MILE
 const DRIVE_M = 5 * METERS_PER_MILE
@@ -164,5 +164,79 @@ describe('scoreMode', () => {
 
   it('never exceeds the drive radius', () => {
     expect(scoreMode([poi({ shop: 'supermarket' }, DRIVE_M + 1)], 'drive').score).toBe(0)
+  })
+})
+
+describe('proximity tiebreaker above saturation', () => {
+  const TEN_CATEGORIES: Record<string, string>[] = [
+    { shop: 'supermarket' },
+    { amenity: 'restaurant' },
+    { amenity: 'cafe' },
+    { shop: 'clothes' },
+    { amenity: 'bank' },
+    { amenity: 'school' },
+    { leisure: 'park' },
+    { amenity: 'pharmacy' },
+    { highway: 'bus_stop' },
+    { amenity: 'bar' },
+  ]
+
+  /** Every category saturated, with the nearest instance at `nearestM`. */
+  const saturatedAt = (nearestM: number) =>
+    TEN_CATEGORIES.flatMap((tags) => Array.from({ length: 10 }, () => poi(tags, nearestM)))
+
+  it('separates two addresses that both saturate every category', () => {
+    // Before this existed both of these scored exactly 100, which made a
+    // measured San Francisco address indistinguishable from Midtown Manhattan.
+    const doorstep = scoreMode(saturatedAt(20), 'walk').score
+    const edgeOfFullCredit = scoreMode(saturatedAt(400), 'walk').score
+
+    expect(doorstep).toBeGreaterThan(edgeOfFullCredit)
+  })
+
+  it('leaves headroom rather than pinning good addresses at 100', () => {
+    // 400m is still inside the quarter-mile full-credit zone, so decay alone
+    // treats it as perfect. It should read as very good, not flawless.
+    const score = scoreMode(saturatedAt(400), 'walk').score
+    expect(score).toBeGreaterThanOrEqual(85)
+    expect(score).toBeLessThan(100)
+  })
+
+  it('still reaches 100 when everything really is at the doorstep', () => {
+    expect(scoreMode(saturatedAt(5), 'walk').score).toBe(100)
+  })
+
+  it('does not let proximity rescue a category that is not served', () => {
+    // One grocery at the doorstep is still one grocery, not a full category.
+    const single = scoreMode([poi({ shop: 'supermarket' }, 1)], 'walk')
+    const grocery = single.breakdown.find((row) => row.key === 'grocery')
+    expect(grocery?.saturation).toBeLessThan(1)
+  })
+})
+
+describe('scoreBand', () => {
+  it('covers every score from 0 to 100', () => {
+    for (let score = 0; score <= 100; score++) {
+      expect(scoreBand(score), `score ${score}`).toBeDefined()
+    }
+  })
+
+  it('keeps the wording and the colour on the same thresholds', () => {
+    // These drifted once: tone banded at 70/40 while the wording banded at
+    // 90/70/50/25, so a 45 rendered in the encouraging yellow directly under
+    // "Most trips need a car".
+    for (let score = 0; score <= 100; score++) {
+      const band = scoreBand(score)
+      expect(band.label, `score ${score}`).toBe(scoreLabel(score))
+      if (score >= 70) expect(band.tone, `score ${score}`).toBe('good')
+      else if (score >= 50) expect(band.tone, `score ${score}`).toBe('mixed')
+      else expect(band.tone, `score ${score}`).toBe('poor')
+    }
+  })
+
+  it('lists bands in descending order so the first match wins', () => {
+    const mins = SCORE_BANDS.map((band) => band.min)
+    expect(mins).toEqual([...mins].sort((a, b) => b - a))
+    expect(mins[mins.length - 1]).toBe(0)
   })
 })
