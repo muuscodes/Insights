@@ -1,16 +1,26 @@
 import 'server-only'
 
+import { cache } from 'react'
 import { unstable_cache } from 'next/cache'
 
-import { formatCoordParam, type LatLng } from './geo'
+import { formatCoordParam, parseCoordParam, type LatLng } from './geo'
 import { fetchBirds } from './providers/gbif'
 import { fetchDemographics, lookupTract, type TractInfo } from './providers/census'
-import { fetchPois } from './providers/overpass'
+import { fetchDrivePois, fetchNearPois } from './providers/overpass'
 import { reverseLabel } from './providers/photon'
 import { computeScentProfile } from './scoring/scent'
 import { scoreMode } from './scoring/score'
 import { computeUrbanIndex } from './scoring/urban'
-import type { Bird, Demographics, InsightsPayload, MapPoi, Panel, Poi } from './types'
+import type {
+  Bird,
+  CoreInsights,
+  Demographics,
+  InsightsPayload,
+  MapPoi,
+  Panel,
+  Poi,
+  ScoreResult,
+} from './types'
 
 /**
  * Assemble everything for one address.
@@ -49,6 +59,17 @@ function sampleForMap(pois: readonly Poi[], limit: number): Poi[] {
   return sampled
 }
 
+/**
+ * What actually goes in the cache entry: the report the page renders, plus the
+ * 1-mile POI set the streamed driving score starts from.
+ */
+interface CachedCore {
+  payload: CoreInsights
+  nearPois: Poi[]
+  /** Distinguishes "no amenities here" from "the query did not come back". */
+  nearFetchFailed: boolean
+}
+
 function panelOk<T>(data: T): Panel<T> {
   return { ok: true, data }
 }
@@ -68,8 +89,8 @@ function panelFailed(error: unknown, fallback: string, panel: string): Panel<nev
   return { ok: false, reason: fallback }
 }
 
-async function assemble(center: LatLng): Promise<InsightsPayload> {
-  const poisPromise = fetchPois(center)
+async function assemble(center: LatLng): Promise<CachedCore> {
+  const poisPromise = fetchNearPois(center)
   const birdsPromise = fetchBirds(center)
   const tractPromise = lookupTract(center)
 
@@ -112,14 +133,6 @@ async function assemble(center: LatLng): Promise<InsightsPayload> {
         poisResult.status === 'rejected' ? poisResult.reason : null,
         'Amenity data is temporarily unavailable.',
         'walk',
-      )
-
-  const drive: Panel<ReturnType<typeof scoreMode>> = pois
-    ? panelOk(scoreMode(pois.drivePois, 'drive'))
-    : panelFailed(
-        poisResult.status === 'rejected' ? poisResult.reason : null,
-        'Amenity data is temporarily unavailable.',
-        'drive',
       )
 
   /* Urban index ------------------------------------------------------------ */
@@ -176,20 +189,58 @@ async function assemble(center: LatLng): Promise<InsightsPayload> {
   )
 
   return {
-    address: {
-      formatted: label,
-      lat: center.lat,
-      lng: center.lng,
-      tractGeoid: tract?.geoid ?? null,
+    payload: {
+      address: {
+        formatted: label,
+        lat: center.lat,
+        lng: center.lng,
+        tractGeoid: tract?.geoid ?? null,
+      },
+      walk,
+      urban,
+      scent,
+      demographics: demographicsPanel,
+      birds,
+      mapPois,
+      generatedAt: new Date().toISOString(),
     },
-    walk,
-    drive,
-    urban,
-    scent,
-    demographics: demographicsPanel,
-    birds,
-    mapPois,
-    generatedAt: new Date().toISOString(),
+    // Carried so the driving score can start from the 1-mile set without
+    // fetching it a second time. Tags are already trimmed to the handful the
+    // classifier reads, so this stays small enough to cache.
+    nearPois: pois?.nearPois ?? [],
+    nearFetchFailed: pois === null,
+  }
+}
+
+/**
+ * The driving score, on its own.
+ *
+ * Split out because it is the only part of the report that needs the 5-mile
+ * Overpass pass, and that pass is irreducibly slow over a sparse address: 9.9s
+ * on the healthiest mirror, against 1.5s for the 1-mile pass. Holding the whole
+ * page back for it meant a rural cold start could not come in under 10s no
+ * matter how healthy the upstream was.
+ *
+ * It starts from the core report's 1-mile set rather than fetching its own.
+ * That is not just an optimisation: `unstable_cache` is a read-through cache
+ * with no in-flight deduplication, so when this had its own cached 1-mile fetch
+ * both halves of the page missed the cold cache at the same instant and issued
+ * a query each. The primary mirror allows two concurrent queries per IP, so the
+ * pair ate the entire allowance and queued behind each other. Measured with
+ * that bug present, a dense address that needs no wide pass at all took 35.3s.
+ */
+async function assembleDrive(center: LatLng): Promise<Panel<ScoreResult>> {
+  const { nearPois, nearFetchFailed } = await cachedCore(center)
+
+  if (nearFetchFailed) {
+    return { ok: false, reason: 'Amenity data is temporarily unavailable.' }
+  }
+
+  try {
+    const { drivePois } = await fetchDrivePois(center, nearPois)
+    return panelOk(scoreMode(drivePois, 'drive'))
+  } catch (error) {
+    return panelFailed(error, 'Amenity data is temporarily unavailable.', 'drive')
   }
 }
 
@@ -219,31 +270,100 @@ const CACHE_TTL_SECONDS = 60 * 60 * 24
  * subsumes the Census, GBIF and Photon calls as well. Cities now behave the way
  * rural addresses already did: expensive once, then instant.
  */
-export function buildInsightsForCoords(center: LatLng): Promise<InsightsPayload> {
-  // Keyed on the canonical 6-decimal form, which is exactly what the URL
-  // carries, so the same shared link always lands on the same entry. Rounding
-  // coarser to pool neighbouring lookups was tempting but wrong: 4 decimals is
-  // ~11 m, and two genuinely different street addresses fit inside that.
-  const key = formatCoordParam(center)
+/*
+  Keyed on the canonical 6-decimal form, which is exactly what the URL carries,
+  so the same shared link always lands on the same entry. Rounding coarser to
+  pool neighbouring lookups was tempting but wrong: 4 decimals is ~11 m, and two
+  genuinely different street addresses fit inside that.
+*/
+const keyFor = (center: LatLng): string => formatCoordParam(center)
 
-  return unstable_cache(() => assemble(center), ['insights', key], {
+/**
+ * The core report, cached across requests and deduplicated within one.
+ *
+ * Two layers, doing different jobs, both load-bearing:
+ *
+ *   `unstable_cache` is the cross-request cache, so a second visitor to an
+ *   address pays nothing.
+ *
+ *   React's `cache` deduplicates *within* a single request. The page renders
+ *   the report and the streamed driving score as two concurrent subtrees, and
+ *   both need this. `unstable_cache` is read-through with no in-flight
+ *   deduplication, so on a cold cache both would call it and both would run the
+ *   1-mile Overpass query. Wrapping it here makes them share one promise.
+ */
+/*
+  Keyed on the coordinate *string*, not the LatLng object. React's `cache`
+  compares arguments by identity, and every caller parses its own object out of
+  the URL, so keying on the object deduplicates nothing: `generateMetadata` and
+  the page body each built their own, and the report was assembled twice per
+  request. With the streamed driving score added that became two concurrent
+  1-mile Overpass queries against a mirror that allows two per IP, and a dense
+  address that should take four seconds took 35.2s with its walk panel failing.
+*/
+const cachedCoreByKey = cache((key: string): Promise<CachedCore> => {
+  const center = parseCoordParam(key)
+  if (!center) throw new Error(`Unparseable coordinate key: ${key}`)
+
+  return unstable_cache(() => assemble(center), ['core', key], {
     revalidate: CACHE_TTL_SECONDS,
     tags: ['insights'],
   })()
+})
+
+const cachedCore = (center: LatLng): Promise<CachedCore> => cachedCoreByKey(keyFor(center))
+
+/**
+ * Everything except the driving score, reusing a cached report when there is
+ * one. `providedLabel` is display text from `?q=` and is applied on top of the
+ * cached payload, never baked into it.
+ */
+export async function buildCoreInsights(
+  center: LatLng,
+  providedLabel?: string,
+): Promise<CoreInsights> {
+  const { payload } = await cachedCore(center)
+
+  if (!providedLabel) return payload
+
+  return { ...payload, address: { ...payload.address, formatted: providedLabel } }
 }
 
 /**
- * Assemble everything for one address, reusing a cached report when there is
- * one. `providedLabel` is display text from `?q=` and is applied on top of the
- * cached payload, never baked into it.
+ * The driving score, awaited separately so it never holds the page back.
+ *
+ * Cached on its own key as well, so the wide pass is paid once per address
+ * rather than once per visit, and deduplicated within a request for the same
+ * reason the core is.
+ */
+const driveScoreByKey = cache((key: string): Promise<Panel<ScoreResult>> => {
+  const center = parseCoordParam(key)
+  if (!center) throw new Error(`Unparseable coordinate key: ${key}`)
+
+  return unstable_cache(() => assembleDrive(center), ['drive', key], {
+    revalidate: CACHE_TTL_SECONDS,
+    tags: ['insights'],
+  })()
+})
+
+export const buildDriveScore = (center: LatLng): Promise<Panel<ScoreResult>> =>
+  driveScoreByKey(keyFor(center))
+
+/**
+ * The complete report, core plus driving score.
+ *
+ * Only for callers that genuinely need one object, such as the JSON route. The
+ * page deliberately does not use this: it renders the core and streams the
+ * driving score in behind it.
  */
 export async function buildInsights(
   center: LatLng,
   providedLabel?: string,
 ): Promise<InsightsPayload> {
-  const payload = await buildInsightsForCoords(center)
+  const [core, drive] = await Promise.all([
+    buildCoreInsights(center, providedLabel),
+    buildDriveScore(center),
+  ])
 
-  if (!providedLabel) return payload
-
-  return { ...payload, address: { ...payload.address, formatted: providedLabel } }
+  return { ...core, drive }
 }

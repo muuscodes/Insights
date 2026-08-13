@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { UpstreamError, fetchJson, firstSuccessful } from './http'
+import { UpstreamError, fetchJson, firstSuccessful, hedgedRace } from './http'
 
 afterEach(() => {
   vi.restoreAllMocks()
@@ -107,5 +107,94 @@ describe('firstSuccessful', () => {
         throw new UpstreamError('all down')
       }),
     ).rejects.toThrow('all down')
+  })
+})
+
+describe('hedgedRace', () => {
+  const never = () => new Promise<string>(() => {})
+  const after = (ms: number, value: string) =>
+    new Promise<string>((resolve) => setTimeout(() => resolve(value), ms))
+
+  it('returns the leader without launching anyone else when it is fast', async () => {
+    // A healthy request must never pay for the hedge.
+    const attempted: string[] = []
+    const result = await hedgedRace(
+      ['fast', 'second', 'third'],
+      async (candidate) => {
+        attempted.push(candidate)
+        return candidate
+      },
+      50,
+    )
+
+    expect(result).toBe('fast')
+    expect(attempted).toEqual(['fast'])
+  })
+
+  it('launches the next alongside a slow leader and takes whoever wins', async () => {
+    // This is the case the whole thing exists for: measured on one query,
+    // overpass-api.de took 4.1s while private.coffee spent 32.5s reaching a 504.
+    const attempted: string[] = []
+    const result = await hedgedRace(
+      ['slow', 'quick'],
+      async (candidate) => {
+        attempted.push(candidate)
+        return candidate === 'slow' ? never() : after(5, 'quick')
+      },
+      20,
+    )
+
+    expect(result).toBe('quick')
+    expect(attempted).toEqual(['slow', 'quick'])
+  })
+
+  it('does not wait out the stagger when the leader fails outright', async () => {
+    const started = Date.now()
+    const result = await hedgedRace(
+      ['broken', 'good'],
+      async (candidate) => {
+        if (candidate === 'broken') throw new UpstreamError('down')
+        return candidate
+      },
+      10_000,
+    )
+
+    expect(result).toBe('good')
+    // A 10s stagger was configured; a failure must not have honoured it.
+    expect(Date.now() - started).toBeLessThan(1_000)
+  })
+
+  it('launches each candidate exactly once', async () => {
+    // The stagger timer and the failure path can both reach for the next
+    // candidate, and they must not both take the same one.
+    const attempted: string[] = []
+    await expect(
+      hedgedRace(
+        ['a', 'b', 'c'],
+        async (candidate) => {
+          attempted.push(candidate)
+          throw new UpstreamError(`${candidate} down`)
+        },
+        1,
+      ),
+    ).rejects.toThrow('down')
+
+    expect(attempted.sort()).toEqual(['a', 'b', 'c'])
+  })
+
+  it('rejects only once every candidate has failed', async () => {
+    await expect(
+      hedgedRace(
+        ['a', 'b'],
+        async () => {
+          throw new UpstreamError('all down')
+        },
+        1,
+      ),
+    ).rejects.toThrow('all down')
+  })
+
+  it('rejects an empty candidate list rather than hanging', async () => {
+    await expect(hedgedRace([], async () => 'x', 10)).rejects.toThrow(UpstreamError)
   })
 })

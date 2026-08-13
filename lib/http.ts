@@ -83,10 +83,9 @@ export async function fetchJson<T>(url: string, options: FetchOptions): Promise<
 /**
  * Try each candidate in turn, returning the first success.
  *
- * Used for Overpass, where the public instances rate limit aggressively and
- * going down the mirror list is the difference between a working page and an
- * empty one, and for ACS release years, where the candidate is a number rather
- * than a URL.
+ * Used for ACS release years, where trying the second candidate is only correct
+ * once the first has genuinely failed. For mirrors of the same service, prefer
+ * `hedgedRace`, which does not make a healthy request wait behind a sick one.
  */
 export async function firstSuccessful<T, C>(
   candidates: readonly C[],
@@ -103,4 +102,84 @@ export async function firstSuccessful<T, C>(
   }
 
   throw lastError instanceof Error ? lastError : new UpstreamError('All upstream candidates failed')
+}
+
+/**
+ * Race interchangeable mirrors, staggered.
+ *
+ * Walking a mirror list in order makes every request wait out the slowest sick
+ * mirror before it may try a healthy one, and that, not query cost, was what
+ * made cold reports slow. Measured on the same query within a minute of each
+ * other: overpass-api.de answered in 4.1s, kumi.systems in 9.0s, and
+ * private.coffee spent 32.5s arriving at a 504.
+ *
+ * So the first candidate gets a head start of `hedgeMs`, and if it has not
+ * answered by then the second is launched alongside it rather than instead of
+ * it. First success wins and the rest are abandoned. A failure launches the
+ * next immediately rather than waiting out the stagger.
+ *
+ * The cost is some duplicate load on a free service when the leader is slow,
+ * which is why `hedgeMs` should sit above the normal success time rather than
+ * below it. It only pays out when something is actually wrong.
+ */
+export function hedgedRace<T, C>(
+  candidates: readonly C[],
+  attempt: (candidate: C) => Promise<T>,
+  hedgeMs: number,
+): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    if (candidates.length === 0) {
+      reject(new UpstreamError('No upstream candidates to try'))
+      return
+    }
+
+    const timers: ReturnType<typeof setTimeout>[] = []
+    let settled = false
+    let next = 0
+    let failures = 0
+    let lastError: unknown
+
+    const cleanup = (): void => {
+      for (const timer of timers) clearTimeout(timer)
+    }
+
+    const launch = (): void => {
+      if (settled || next >= candidates.length) return
+
+      // Taking the index here, rather than passing one in, is what keeps the
+      // stagger timer and the failure path from launching the same mirror twice.
+      const candidate = candidates[next++] as C
+
+      if (next < candidates.length) timers.push(setTimeout(launch, hedgeMs))
+
+      attempt(candidate).then(
+        (value) => {
+          if (settled) return
+          settled = true
+          cleanup()
+          resolve(value)
+        },
+        (error) => {
+          lastError = error
+          failures += 1
+          if (settled) return
+
+          if (failures >= candidates.length) {
+            settled = true
+            cleanup()
+            reject(
+              lastError instanceof Error
+                ? lastError
+                : new UpstreamError('All upstream candidates failed'),
+            )
+            return
+          }
+
+          launch()
+        },
+      )
+    }
+
+    launch()
+  })
 }
