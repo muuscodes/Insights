@@ -1,3 +1,7 @@
+## A Three Hour Project
+
+I wanted to try a timed project and decided to make an insights page in 3 hours, with a small additional fix a few days later.
+
 ## Project URL
 
 [insights-eight-phi.vercel.app](https://insights-eight-phi.vercel.app)
